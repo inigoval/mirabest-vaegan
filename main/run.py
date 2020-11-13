@@ -183,7 +183,7 @@ for epoch in range(n_epochs):
 		torch.save(L_dict, CHECKPOINT_PATH + '/L_dict.pt')
 
 	## plot and save losses/images ##
-	if epoch % 3 ==0:
+	if epoch % 1 ==0:
 		plot_losses(L_dict, epoch)
 		plot_images(X, E, G, n_z, epoch)
 

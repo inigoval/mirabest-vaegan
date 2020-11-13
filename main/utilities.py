@@ -90,7 +90,8 @@ def add_noise(bool_val, X, noise_scale, epoch, n_epochs):
     If bool_val == True, add noise to the input data, otherwise leave it unchanged
     """
     if bool_val == True:
-        X_noisey = X + torch.randn_like(X)*(1- epoch/n_epochs)*noise_scale
+        epsilon = torch.clamp(0.75- epoch/n_epochs, min=0, max=1)
+        X_noisey = X + torch.randn_like(X)*epsilon*noise_scale
         X_noisey = torch.clamp(X_noisey, -1,1)
         return X_noisey
     else:
