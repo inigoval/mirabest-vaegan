@@ -58,7 +58,7 @@ def plot_images(X, E, G, n_z, epoch):
     """
     # generate random z values
     Z_plot = torch.normal(torch.zeros(4, n_z), torch.ones(4, n_z)).cuda().view(4, n_z, 1, 1)
-    X_gen = G(Z_plot).cpu().detach().view(-1,28,28).numpy()
+    X_gen = G(Z_plot).cpu().detach().view(-1,150,150).numpy()
     # set up a 2x2 grid of plots in figure 2
     # [ax21  ax22]
     # [ax23  ax24]
@@ -68,19 +68,6 @@ def plot_images(X, E, G, n_z, epoch):
     im3 = ax23.imshow(X_gen[2,:,:], cmap='hot')
     im4 = ax24.imshow(X_gen[3,:,:], cmap='hot')
     fig.savefig(IMAGE_PATH + '/epoch_{}.pdf'.format(epoch))
-    plt.close(fig)
-    
-    X_sample = X[:2, :, :,:]
-    X_recon = G(E(X_sample)[0]).cpu().detach().view(-1,28,28).numpy()
-    # set up a 2x2 grid of plots in figure 2
-    # [ax21  ax22]
-    # [ax23  ax24]
-    fig, ((ax21, ax22), (ax23, ax24)) = plt.subplots(2,2)
-    im1 = ax21.imshow(X_recon[0,:,:], cmap='hot')
-    im2 = ax22.imshow(X_recon[1,:,:], cmap='hot')
-    im3 = ax23.imshow(X_sample[0,:,:].cpu().view(28,28).numpy(), cmap='hot')
-    im4 = ax24.imshow(X_sample[1,:,:].cpu().view(28,28).numpy(), cmap='hot')
-    fig.savefig(IMAGE_PATH + '/recon_epoch_{}.pdf'.format(epoch))
     plt.close(fig)
     
     X_sample = X[:2, :, :,:]
@@ -96,20 +83,6 @@ def plot_images(X, E, G, n_z, epoch):
     fig.savefig(IMAGE_PATH + '/recon_epoch_{}.pdf'.format(epoch))
     plt.close(fig)
 
-    plt.close(fig)
-    
-    X_sample = X[:2, :, :,:]
-    X_recon = G(E(X_sample)[0]).cpu().detach().view(-1,28,28).numpy()
-    # set up a 2x2 grid of plots in figure 2
-    # [ax21  ax22]
-    # [ax23  ax24]
-    fig, ((ax21, ax22), (ax23, ax24)) = plt.subplots(2,2)
-    im1 = ax21.imshow(X_recon[0,:,:], cmap='hot')
-    im2 = ax22.imshow(X_recon[1,:,:], cmap='hot')
-    im3 = ax23.imshow(X_sample[0,:,:].cpu().view(28,28).numpy(), cmap='hot')
-    im4 = ax24.imshow(X_sample[1,:,:].cpu().view(28,28).numpy(), cmap='hot')
-    fig.savefig(IMAGE_PATH + '/recon_epoch_{}.pdf'.format(epoch))
-    plt.close(fig)
 
 
 def add_noise(bool_val, X, noise_scale, epoch, n_epochs):
