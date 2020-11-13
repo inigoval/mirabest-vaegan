@@ -36,8 +36,8 @@ gamma = 1  # weighting for style (L_llike) in generator loss function
 smoothing = False
 smoothing_scale = 0.12
 # discriminator noise parameters
-noise = False
-noise_scale = 0.1
+noise = True
+noise_scale = 0.5
 # label flipping
 label_flip = False
 #p_flip = 0.05
