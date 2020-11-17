@@ -170,7 +170,7 @@ def plot_grid(n_z, E, G, Z_plot, epoch, n_images=6):
 
     for ax, im in zip(grid, img_list_p):
         ax.imshow(im)
-    plt.title('generated images epoch {}'.format(epoch))
+    #plt.title('generated images epoch {}'.format(epoch))
     plt.savefig(IMAGE_PATH + '/grid_X_p_{}.pdf'.format(epoch))
     plt.close(fig)
 
@@ -182,7 +182,7 @@ def plot_grid(n_z, E, G, Z_plot, epoch, n_images=6):
 
     for ax, im in zip(grid, img_list_joined):
         ax.imshow(im)
-    plt.title('reconstructed images epoch {}'.format(epoch))
+    #plt.title('reconstructed images epoch {}'.format(epoch))
     plt.savefig(IMAGE_PATH + '/grid_X_tilde_{}.pdf'.format(epoch))
     plt.close(fig)
 
