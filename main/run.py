@@ -8,7 +8,7 @@ import os
 
 from vaegan import enc, dec, disc
 from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
-from utilities import plot_images, plot_losses, KL_loss
+from utilities import plot_images, KL_loss, sparsity_loss, plot_grid
 from dataloading import load_data
 
 # define paths for saving
@@ -30,7 +30,7 @@ BCE_loss = nn.BCELoss(reduction='mean')
 batch_size = 32
 batch_size_test = 1000
 n_z = 100
-n_epochs = 300
+n_epochs = 400
 gamma = 1  # weighting for style (L_llike) in generator loss function
 # smoothing parameters
 smoothing = False
@@ -41,7 +41,8 @@ noise_scale = 0.5
 # label flipping
 label_flip = False
 #p_flip = 0.05
-
+# image grid plotting
+n_images = 6
 
 ## load and normalise MNIST data ## 
 trainLoader, testLoader = load_data(batch_size)
@@ -50,6 +51,8 @@ trainLoader, testLoader = load_data(batch_size)
 L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': torch.zeros(n_epochs), 
 		  'L_D': torch.zeros(n_epochs), 'y_gen': torch.zeros(n_epochs), 'y_recon': torch.zeros(n_epochs)}
 
+# initialise noise for grid images so that latent vector is same every time
+Z_plot = Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)
 
 for epoch in range(n_epochs):
 	L_E_cum, L_G_cum, L_D_cum  = 0, 0, 0
@@ -176,15 +179,19 @@ for epoch in range(n_epochs):
 	L_dict['y_gen'][epoch] = y_gen/iterations
 	L_dict['y_recon'][epoch] = y_recon/iterations
 
-	if epoch % 5 == 0:
-		torch.save(E, CHECKPOINT_PATH + '/E.pt')
-		torch.save(G, CHECKPOINT_PATH + '/G.pt')
-		torch.save(D, CHECKPOINT_PATH + '/D.pt')
+	if epoch % 10 == 0:
+		torch.save(E, CHECKPOINT_PATH + '/E_{:f}.pt'.format(epoch))
+		torch.save(G, CHECKPOINT_PATH + '/G_{:f}.pt'.format(epoch))
+		torch.save(D, CHECKPOINT_PATH + '/D_{:f}.pt'.format(epoch))
 		torch.save(L_dict, CHECKPOINT_PATH + '/L_dict.pt')
 
 	## plot and save losses/images ##
 	if epoch % 1 ==0:
 		plot_losses(L_dict, epoch)
 		plot_images(X, E, G, n_z, epoch)
+
+	## plot image grid ##
+	if epoch % 5 == 0:
+		plot_grid(n_z, E, G, Z_plot, epoch, n_images=6)
 
 	print('epoch {}/{}  |  L_E {:.4f}  |  L_G {:.4f}  |  L_D {:.4f}  |  y_gen {:.3f}  |  y_recon {:.3f}'.format(epoch, n_epochs, L_E_cum/iterations, L_G_cum/iterations, L_D_cum/iterations, y_gen/iterations, y_recon/iterations))
