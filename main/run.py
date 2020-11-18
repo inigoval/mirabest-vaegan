@@ -194,4 +194,4 @@ for epoch in range(n_epochs):
 	if epoch % 5 == 0:
 		plot_grid(n_z, E, G, Z_plot, epoch, n_images=6)
 
-	print('epoch {}/{}  |  L_E {:.4f}  |  L_G {:.4f}  |  L_D {:.4f}  |  y_gen {:.3f}  |  y_recon {:.3f}'.format(epoch, n_epochs, L_E_cum/iterations, L_G_cum/iterations, L_D_cum/iterations, y_gen/iterations, y_recon/iterations))
+	print('epoch {}/{}  |  L_E {:.4f}  |  L_G {:.4f}  |  L_D {:.4f}  |  y_gen {:.3f}  |  y_recon {:.3f}'.format(epoch+1, n_epochs, L_E_cum/iterations, L_G_cum/iterations, L_D_cum/iterations, y_gen/iterations, y_recon/iterations))
