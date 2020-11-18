@@ -135,9 +135,9 @@ class disc(nn.Module):
 
     def forward(self, x):
         x = self.conv1(x)
-        D_l = x.clone()
         x = self.conv2(x)
         x = self.conv3(x)
+        D_l = x.clone()
         x = self.conv4(x)
         y_pred = self.conv5(x).view(-1)
         return y_pred, D_l
