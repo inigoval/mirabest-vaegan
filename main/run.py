@@ -30,7 +30,7 @@ BCE_loss = nn.BCELoss(reduction='mean')
 batch_size = 32
 batch_size_test = 1000
 n_z = 100
-n_epochs = 400
+n_epochs = 1000
 gamma = 1  # weighting for style (L_llike) in generator loss function
 # smoothing parameters
 smoothing = False
