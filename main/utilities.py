@@ -22,7 +22,7 @@ def add_noise(bool_val, X, noise_scale, epoch, n_epochs):
     if bool_val == True:
         epsilon = torch.clamp(torch.Tensor([0.75- epoch/n_epochs]), min=0, max=1).cuda()
         X_noisey = X + torch.randn_like(X)*epsilon*noise_scale
-        X_noisey = torch.clamp(X_noisey, -1,1)
+        #X_noisey = torch.clamp(X_noisey, -1,1)
         return X_noisey
     else:
         return X
