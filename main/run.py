@@ -8,15 +8,20 @@ import os
 
 from vaegan import enc, dec, disc
 from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
-from utilities import plot_images, KL_loss, sparsity_loss, plot_grid
+from utilities import plot_images, KL_loss, sparsity_loss, plot_grid, plot_z
 from dataloading import load_data
+from evaluation import dset_array, class_idx
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(FILE_PATH, 'data')
 CHECKPOINT_PATH = os.path.join(FILE_PATH, 'files', 'checkpoints')
 
-cuda = torch.device('cuda') 
+cuda = torch.device('cuda')
+
+## load full datasets for plotting latent space ##
+X_full, y_full = dset_array()
+fri_idx, frii_idx, hybrid_idx = class_idx(y_full)
 
 ## initialise networks, losses and optimizers ##
 E, G, D = enc().cuda(), dec().cuda(), disc().cuda()
@@ -44,7 +49,7 @@ label_flip = False
 # image grid plotting
 n_images = 6
 
-## load and normalise MNIST data ## 
+## load and normalise data ## 
 trainLoader, testLoader = load_data(batch_size)
 
 # assign dictionary to hold plotting values
@@ -188,8 +193,11 @@ for epoch in range(n_epochs):
 	## plot and save losses/images ##
 	if epoch % 1 ==0:
 		plot_losses(L_dict, epoch)
-		plot_images(X, E, G, n_z, epoch)
+		#plot_images(X, E, G, n_z, epoch)
 
+	## plot latent space if we're in 2d ##
+	if n_z == 2 and epoch % 5 == 0:
+		plot_z(X_full, y_full, E, epoch)
 	## plot image grid ##
 	if epoch % 5 == 0:
 		plot_grid(n_z, E, G, Z_plot, epoch, n_images=6)

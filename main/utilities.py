@@ -6,6 +6,7 @@ import torch.nn as nn
 import os
 from mpl_toolkits.axes_grid1 import ImageGrid
 from dataloading import MiraBest_full
+from evaluation import class_idx
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -13,6 +14,7 @@ DATA_PATH = os.path.join(FILE_PATH, 'data')
 FIG_PATH = os.path.join(FILE_PATH, 'files', 'figs')
 IMAGE_PATH = os.path.join(FILE_PATH, 'files', 'images')
 CHECKPOINT_PATH = os.path.join(FILE_PATH, 'files', 'checkpoints')
+EVAL_PATH = os.path.join(FILE_PATH, 'files', 'eval')
 
 def add_noise(bool_val, X, noise_scale, epoch, n_epochs):
     """
@@ -184,6 +186,16 @@ def plot_grid(n_z, E, G, Z_plot, epoch, n_images=6):
         ax.imshow(im)
     #plt.title('reconstructed images epoch {}'.format(epoch))
     plt.savefig(IMAGE_PATH + '/grid_X_tilde_{}.pdf'.format(epoch))
+    plt.close(fig)
+
+def plot_z(X, y, E, epoch):
+    fri_idx, frii_idx, hybrid_idx = class_idx(y)
+    embedding = E(X)
+    plt.scatter(embedding[fri_idx, 0], embedding[fri_idx, 1], c='red', label='fri')
+    plt.scatter(embedding[frii_idx, 0], embedding[frii_idx, 1], c='blue', label='frii')
+    plt.scatter(embedding[hybrid_idx, 0], embedding[hybrid_idx, 1], c='green', label='hybrid')
+    plt.legend()
+    plt.savefig(FIG_PATH + '/embedding_{}.pdf'.format(epoch))
     plt.close(fig)
 
 
