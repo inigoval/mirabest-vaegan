@@ -190,7 +190,7 @@ def plot_grid(n_z, E, G, Z_plot, epoch, n_images=6):
 
 def plot_z(X, y, E, epoch):
     fri_idx, frii_idx, hybrid_idx = class_idx(y)
-    embedding = E(torch.from_numpy(X).cuda()).numpy()
+    embedding = E(torch.from_numpy(X).cuda())[0].numpy()
     plt.scatter(embedding[fri_idx, 0], embedding[fri_idx, 1], c='red', label='fri')
     plt.scatter(embedding[frii_idx, 0], embedding[frii_idx, 1], c='blue', label='frii')
     plt.scatter(embedding[hybrid_idx, 0], embedding[hybrid_idx, 1], c='green', label='hybrid')
