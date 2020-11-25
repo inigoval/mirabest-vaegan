@@ -35,6 +35,12 @@ def class_idx(y):
     hybrid_idx = np.where(y>7.5)
     return fri_idx, frii_idx, hybrid_idx
 
+def inception_score(G, n_samples=1000, eps = 1E-10):
+    # I = torch.load()
+    Z = torch.randn(n_samples, n_z).cuda().view(n_samples, n_z, 1, 1)
+    X_gen = G(Z)
+    # y_gen = 
+
 def umap_map():
     X, y = dset_array()
     X = np.reshape(X, (-1, 150**2))
