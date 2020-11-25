@@ -39,8 +39,10 @@ def inception_score(G, n_z, n_samples=1000, eps = 1E-10):
     # I = torch.load()
     Z = torch.randn(n_samples, n_z).cuda().view(n_samples, n_z, 1, 1)
     X = G(Z)
-    # p_y|x = I(X)
-    # p_y = torch.mean(p_y|
+    # p_yx = I(X)
+    # p_y = torch.mean(p_yx, 0)
+    # KL = torch.mean(p_yx * (log(p_yx + eps) - log(p_y + eps)))
+    # return KL
 
 def umap_map():
     X, y = dset_array()
