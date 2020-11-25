@@ -21,7 +21,6 @@ cuda = torch.device('cuda')
 
 ## load full datasets for plotting latent space ##
 X_full, y_full = dset_array()
-fri_idx, frii_idx, hybrid_idx = class_idx(y_full)
 
 ## initialise networks, losses and optimizers ##
 E, G, D = enc().cuda(), dec().cuda(), disc().cuda()

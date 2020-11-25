@@ -196,7 +196,7 @@ def plot_z(X, y, E, epoch):
     plt.scatter(embedding[hybrid_idx, 0], embedding[hybrid_idx, 1], c='green', label='hybrid')
     plt.legend()
     plt.savefig(FIG_PATH + '/embedding_{}.pdf'.format(epoch))
-    plt.close(fig)
+    plt.close()
 
 
 def set_requires_grad(network, bool_val):
