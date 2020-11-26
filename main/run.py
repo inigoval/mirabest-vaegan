@@ -6,7 +6,7 @@ import torch.nn as nn
 import numpy as np
 import os
 
-from vaegan import enc, dec, disc
+from networks import enc, dec, disc
 from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
 from utilities import plot_images, KL_loss, sparsity_loss, plot_grid, plot_z
 from dataloading import load_data
