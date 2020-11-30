@@ -6,7 +6,7 @@ import torch.nn as nn
 import os
 
 # latent vector length
-n_z = 2
+n_z = 32
 
 # feature map sizes
 n_ef = 16

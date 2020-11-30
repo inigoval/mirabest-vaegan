@@ -174,7 +174,7 @@ Args:
 def load_data(batch_size):
     transform = torchvision.transforms.Compose([
     torchvision.transforms.ToTensor(),
-    torchvision.transforms.Normalize(mean=[0.5], std=[0.5])
+    torchvision.transforms.Normalize(mean=[0.0031], std=[0.0352])
     ])
     train_data = MiraBest_full(DATA_PATH, train=True, transform=transform, download=True)
     trainLoader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
