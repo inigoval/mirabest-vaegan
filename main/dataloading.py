@@ -177,7 +177,8 @@ def load_data(batch_size):
     torchvision.transforms.Normalize(mean=[0], std=[1])
     ])
     train_data = MiraBest_full(DATA_PATH, train=True, transform=transform, download=True)
-    trainLoader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
     test_data = MiraBest_full(DATA_PATH, train=False, transform=transform, download=True)
+    all_data = torch.utils.data.ConcatDataset((train_data, test_data))
+    trainLoader = torch.utils.data.DataLoader(all_data, batch_size=batch_size, shuffle=True)
     testLoader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=True)
     return trainLoader, testLoader
