@@ -88,7 +88,7 @@ class dec(nn.Module):
 
         self.conv5 = nn.Sequential(
             nn.ConvTranspose2d(n_gf, 1, 4, 2, 1, bias=False),
-            nn.Tanh())
+            nn.Sigmoid())
 
     def forward(self, z):
         x = self.conv1(z)
