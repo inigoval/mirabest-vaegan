@@ -10,12 +10,28 @@ from networks import enc, dec, disc
 from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
 from utilities import plot_images, KL_loss, sparsity_loss, plot_grid, plot_z
 from dataloading import load_data
-from evaluation import dset_array, class_idx
+from evaluation import dset_array, plot_z_fake, plot_z_real, generate
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+EVAL_PATH = os.path.join(FILE_PATH, 'files', 'eval')
 DATA_PATH = os.path.join(FILE_PATH, 'data')
 CHECKPOINT_PATH = os.path.join(FILE_PATH, 'files', 'checkpoints')
+FIG_PATH = os.path.join(FILE_PATH, 'files', 'figs')
+IMAGE_PATH = os.path.join(FILE_PATH, 'files', 'images')
+
+EMBEDDING_PATH = os.path.join(EVAL_PATH, 'embeddings')
+FAKE_PATH = os.path.join(IMAGE_PATH, 'fake')
+RECON_PATH = os.path.join(IMAGE_PATH, 'reconstructed')
+
+path_list = [FILE_PATH, EVAL_PATH, DATA_PATH, CHECKPOINT_PATH, FIG_PATH, 
+			 IMAGE_PATH, EMBEDDING_PATH, FAKE_PATH, RECON_PATH]
+
+for path in path_list:
+	if not os.path.exists(path):
+		os.makedirs(path)
+
 
 cuda = torch.device('cuda')
 
@@ -197,8 +213,15 @@ for epoch in range(n_epochs):
 	## plot latent space if we're in 2d ##
 	if n_z == 2 and epoch % 5 == 0:
 		plot_z(X_full, y_full, E, epoch)
+
 	## plot image grid ##
-	if epoch % 5 == 0:
+	if epoch % 10 == 0:
 		plot_grid(n_z, E, G, Z_plot, epoch, n_images=6)
+	
+	## plot umap embeddings of latent space ##
+	if epoch % 10 == 0:
+		plot_z_real(E, epoch)
+		X_fake = generate(G, n_z, n_samples=1000)
+		plot_z_fake(X_fake, E, epoch)
 
 	print('epoch {}/{}  |  L_E {:.4f}  |  L_G {:.4f}  |  L_D {:.4f}  |  y_gen {:.3f}  |  y_recon {:.3f}'.format(epoch+1, n_epochs, L_E_cum/iterations, L_G_cum/iterations, L_D_cum/iterations, y_gen/iterations, y_recon/iterations))

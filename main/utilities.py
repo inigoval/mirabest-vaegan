@@ -9,12 +9,18 @@ from dataloading import MiraBest_full
 from evaluation import class_idx
 
 # define paths for saving
+# define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+EVAL_PATH = os.path.join(FILE_PATH, 'files', 'eval')
 DATA_PATH = os.path.join(FILE_PATH, 'data')
+CHECKPOINT_PATH = os.path.join(FILE_PATH, 'files', 'checkpoints')
 FIG_PATH = os.path.join(FILE_PATH, 'files', 'figs')
 IMAGE_PATH = os.path.join(FILE_PATH, 'files', 'images')
-CHECKPOINT_PATH = os.path.join(FILE_PATH, 'files', 'checkpoints')
-EVAL_PATH = os.path.join(FILE_PATH, 'files', 'eval')
+
+EMBEDDING_PATH = os.path.join(EVAL_PATH, 'embeddings')
+FAKE_PATH = os.path.join(IMAGE_PATH, 'fake')
+RECON_PATH = os.path.join(IMAGE_PATH, 'reconstructed')
 
 def add_noise(bool_val, X, noise_scale, epoch, n_epochs):
     """
@@ -119,7 +125,7 @@ def plot_images(X, E, G, n_z, epoch):
     im2 = ax22.imshow(X_gen[1,:,:], cmap='hot')
     im3 = ax23.imshow(X_gen[2,:,:], cmap='hot')
     im4 = ax24.imshow(X_gen[3,:,:], cmap='hot')
-    fig.savefig(IMAGE_PATH + '/epoch_{}.pdf'.format(epoch))
+    fig.savefig(FAKE_PATH + '/epoch_{}.pdf'.format(epoch))
     plt.close(fig)
     
     X_sample = X[:2, :, :,:]
@@ -132,7 +138,7 @@ def plot_images(X, E, G, n_z, epoch):
     im2 = ax22.imshow(X_recon[1,:,:], cmap='hot')
     im3 = ax23.imshow(X_sample[0,:,:].cpu().view(150,150).numpy(), cmap='hot')
     im4 = ax24.imshow(X_sample[1,:,:].cpu().view(150,150).numpy(), cmap='hot')
-    fig.savefig(IMAGE_PATH + '/recon_epoch_{}.pdf'.format(epoch))
+    fig.savefig(RECON_PATH + '/recon_epoch_{}.pdf'.format(epoch))
     plt.close(fig)
 
 def plot_grid(n_z, E, G, Z_plot, epoch, n_images=6):
@@ -173,7 +179,7 @@ def plot_grid(n_z, E, G, Z_plot, epoch, n_images=6):
     for ax, im in zip(grid, img_list_p):
         ax.imshow(im)
     #plt.title('generated images epoch {}'.format(epoch))
-    plt.savefig(IMAGE_PATH + '/grid_X_p_{}.pdf'.format(epoch))
+    plt.savefig(FAKE_PATH + '/grid_X_p_{}.pdf'.format(epoch))
     plt.close(fig)
 
     fig = plt.figure(figsize=(13., 13.))
@@ -185,18 +191,9 @@ def plot_grid(n_z, E, G, Z_plot, epoch, n_images=6):
     for ax, im in zip(grid, img_list_joined):
         ax.imshow(im)
     #plt.title('reconstructed images epoch {}'.format(epoch))
-    plt.savefig(IMAGE_PATH + '/grid_X_tilde_{}.pdf'.format(epoch))
+    plt.savefig(RECON_PATH + '/grid_X_tilde_{}.pdf'.format(epoch))
     plt.close(fig)
 
-def plot_z(X, y, E, epoch):
-    fri_idx, frii_idx, hybrid_idx = class_idx(y)
-    embedding = E(torch.from_numpy(X).cuda())[0].cpu().detach().numpy()
-    plt.scatter(embedding[fri_idx, 0], embedding[fri_idx, 1], c='red', label='fri')
-    plt.scatter(embedding[frii_idx, 0], embedding[frii_idx, 1], c='blue', label='frii')
-    plt.scatter(embedding[hybrid_idx, 0], embedding[hybrid_idx, 1], c='green', label='hybrid')
-    plt.legend()
-    plt.savefig(FIG_PATH + '/embedding_{}.pdf'.format(epoch))
-    plt.close()
 
 
 def set_requires_grad(network, bool_val):

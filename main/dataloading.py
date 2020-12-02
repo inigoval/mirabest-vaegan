@@ -180,5 +180,4 @@ def load_data(batch_size):
     test_data = MiraBest_full(DATA_PATH, train=False, transform=transform, download=True)
     all_data = torch.utils.data.ConcatDataset((train_data, test_data))
     trainLoader = torch.utils.data.DataLoader(all_data, batch_size=batch_size, shuffle=True)
-    testLoader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=True)
     return trainLoader, testLoader
