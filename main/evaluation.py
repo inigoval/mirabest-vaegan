@@ -6,6 +6,7 @@ import seaborn as sns
 import os
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
+from scipy.linalg import sqrtm
 
 from dataloading import load_data, MiraBest_full
 
@@ -71,9 +72,13 @@ def frechet_distance(I, X_gen, X_real):
     f_real = I.fid_layer.detach().cpu().numpy()
     mu_gen, mu_real = np.mean(f_gen, axis=0), np.mean(f_real, axis=0)
     chi_gen, chi_real = np.cov(f_gen, rowvar=False), np.cov(f_real, rowvar=False)
-    fid1 = np.mean(((mu_gen-mu_real)**2), axis=0)
-    fid2 = np.mean(np.trace((chi_gen + chi_real - 2*(np.matmul(chi_real, chi_gen))), axis1=1, axis2=2))
-    return fid1 + fid2
+    diff = np.mean(((mu_gen-mu_real)**2), axis=0)
+    covprod = sqrtm((np.matmul(chi_real, chi_gen)))
+
+    if np.iscomplexobj(covprod):
+        covprod = covprod.real
+    fid = diff + np.mean(np.trace((chi_gen + chi_real - 2*covprod), axis1=1, axis2=2))
+    return fid
 
 def class_idx(y):
     fri_idx = np.where(y < 4.5)
