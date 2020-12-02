@@ -65,7 +65,10 @@ def inception_score(I, X, eps = 1E-10):
 
 def frechet_distance(I, X_gen, X_real):
     X_gen, X_real = renormalize(X_gen).cpu(), renormalize(X_real).cpu()
-    f_gen, f_real = I(X_gen).fid_layer.detach().cpu().numpy(), I(X_real).fid_layer.detach().cpu().numpy()
+    _ = I(X_gen)
+    f_gen = I.fid_layer.detach().cpu().numpy()
+    _ = I(X_gen)
+    f_real = I.fid_layer.detach().cpu().numpy()
     mu_gen, mu_real = np.mean(f_gen, axis=0), np.mean(f_real, axis=0)
     chi_gen, chi_real = np.cov(f_gen), np.cov(f_real)
     fid = np.mean((mu_gen-mu_real)^2, axis=0) + np.mean(np.trace((chi_gen + chi_real - 2*(np.matmul(chi_real, chi_gen))), axis1=1, axis2=2))
