@@ -48,7 +48,7 @@ def renormalize(X, mu=0.0032, std = 0.0352):
     return X"""
 
 def generate(G, n_z, n_samples=1000):
-    Z = torch.randn(n_samples, n_z).cuda().view(n_samples, n_z, 1, 1)
+    Z = torch.randn((n_samples, n_z)).cuda().view(n_samples, n_z, 1, 1)
     X = G(Z)
     return X
 
