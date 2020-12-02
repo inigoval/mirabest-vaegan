@@ -233,7 +233,7 @@ for epoch in range(n_epochs):
 		plot_z_real(X_full, y_full, E, epoch, n_z)
 		
 		# generate a set of fake images
-		X_fake = generate(G, n_z, n_samples=y_full.size[0])
+		X_fake = generate(G, n_z, n_samples=y_full.size)
 		plot_z_fake(X_fake, E, epoch, n_z)
 
 	# generate a set of fake images
