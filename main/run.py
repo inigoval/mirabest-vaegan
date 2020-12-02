@@ -74,7 +74,7 @@ eval_dict = {'inception': np.arange(n_epochs), 'frechet': np.arange(n_epochs),
 			 'likeness': np.arange(n_epochs)}
 
 # load inception model
-I = torch.load(EVAL_PATH + '/I.pt')
+I = torch.load(EVAL_PATH + '/I.pt').cpu()
 # load full datasets for plotting latent space #
 X_full, y_full = dset_array()
 
@@ -215,34 +215,35 @@ for epoch in range(n_epochs):
 		torch.save(D, CHECKPOINT_PATH + '/D_{:f}.pt'.format(epoch))
 		torch.save(L_dict, CHECKPOINT_PATH + '/L_dict.pt')
 
-	## plot and save losses/images ##
-	if epoch % 1 ==0:
-		plot_losses(L_dict, epoch)
-		#plot_images(X, E, G, n_z, epoch)
+	with torch.no_grad():
+		## plot and save losses/images ##
+		if epoch % 1 ==0:
+			plot_losses(L_dict, epoch)
+			#plot_images(X, E, G, n_z, epoch)
 
-	## plot latent space if we're in 2d ##
-	if n_z == 2 and epoch % 5 == 0:
-		plot_z(X_full, y_full, E, epoch)
+		## plot latent space if we're in 2d ##
+		if n_z == 2 and epoch % 5 == 0:
+			plot_z(X_full, y_full, E, epoch)
 
-	## plot image grid ##
-	if epoch % 10 == 0:
-		plot_grid(n_z, E, G, Z_plot, epoch, n_images=6)
-	
-	## plot umap embeddings of latent space ##
-	if epoch % 10 == 0:
-		plot_z_real(X_full, y_full, E, epoch, n_z)
+		## plot image grid ##
+		if epoch % 10 == 0:
+			plot_grid(n_z, E, G, Z_plot, epoch, n_images=6)
 		
+		## plot umap embeddings of latent space ##
+		if epoch % 10 == 0:
+			plot_z_real(X_full, y_full, E, epoch, n_z)
+			
+			# generate a set of fake images
+			X_fake = generate(G, n_z, n_samples=y_full.size)
+			plot_z_fake(X_fake, E, epoch, n_z)
+
 		# generate a set of fake images
-		X_fake = generate(G, n_z, n_samples=y_full.size)
-		plot_z_fake(X_fake, E, epoch, n_z)
+		#X_fake = generate(G, n_z, n_samples=y_full.size[0])
 
-	# generate a set of fake images
-	#X_fake = generate(G, n_z, n_samples=y_full.size[0])
+		IS = inception_score(I, X_fake)
+		FID = frechet_distance(I, X_fake, X_full)
+		eval_dict['inception'][epoch] = IS
+		eval_dict['frechet'][epoch] = FID
 
-	IS = inception_score(I, X_fake)
-	FID = frechet_distance(I, X_fake, X_full)
-	eval_dict['inception'][epoch] = IS
-	eval_dict['frechet'][epoch] = FID
-
-	plot_eval_dict(eval_dict, epoch)
+		plot_eval_dict(eval_dict, epoch)
 	print('epoch {}/{}  |  L_E {:.4f}  |  L_G {:.4f}  |  L_D {:.4f}  |  y_gen {:.3f}  |  y_recon {:.3f} | IS {:.5f} | FID {:.3f}'.format(epoch+1, n_epochs, L_E_cum/iterations, L_G_cum/iterations, L_D_cum/iterations, y_gen/iterations, y_recon/iterations, IS, FID))
