@@ -6,11 +6,12 @@ import torch.nn as nn
 import numpy as np
 import os
 
-from networks import enc, dec, disc
+from networks import enc, dec, disc, I
 from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
 from utilities import plot_images, KL_loss, sparsity_loss, plot_grid, plot_z
 from dataloading import load_data
-from evaluation import dset_array, plot_z_fake, plot_z_real, generate
+from evaluation import dset_array, plot_z_fake, plot_z_real, generate, inception_score
+from evaluation import frechet_distance, plot_eval_dict
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -32,11 +33,9 @@ for path in path_list:
 	if not os.path.exists(path):
 		os.makedirs(path)
 
-
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 cuda = torch.device('cuda')
 
-## load full datasets for plotting latent space ##
-X_full, y_full = dset_array()
 
 ## initialise networks, losses and optimizers ##
 E, G, D = enc().cuda(), dec().cuda(), disc().cuda()
@@ -71,6 +70,14 @@ trainLoader, testLoader = load_data(batch_size)
 L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': torch.zeros(n_epochs), 
 		  'L_D': torch.zeros(n_epochs), 'y_gen': torch.zeros(n_epochs), 'y_recon': torch.zeros(n_epochs)}
 
+eval_dict = {'inception': np.arange(n_epochs), 'frechet': np.arange(n_epochs), 
+			 'likeness': np.arange(n_epochs)}
+
+# load inception model
+I = torch.load(EVAL_PATH + '/I.pt')
+# load full datasets for plotting latent space #
+X_full, y_full = dset_array()
+
 # initialise noise for grid images so that latent vector is same every time
 Z_plot = Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)
 
@@ -82,6 +89,9 @@ for epoch in range(n_epochs):
 		X, _ = data
 		X = X.cuda()
 		
+		if i ==2:
+			break
+
 		# check X is normalised properly 
 		if torch.max(X.pow(2)) > 1:
 			print('overflow')
@@ -220,8 +230,19 @@ for epoch in range(n_epochs):
 	
 	## plot umap embeddings of latent space ##
 	if epoch % 10 == 0:
-		plot_z_real(E, epoch)
-		X_fake = generate(G, n_z, n_samples=1000)
-		plot_z_fake(X_fake, E, epoch)
+		plot_z_real(X_full, y_full, E, epoch, n_z)
+		
+		# generate a set of fake images
+		X_fake = generate(G, n_z, n_samples=5000)
+		plot_z_fake(X_fake, E, epoch, n_z)
 
-	print('epoch {}/{}  |  L_E {:.4f}  |  L_G {:.4f}  |  L_D {:.4f}  |  y_gen {:.3f}  |  y_recon {:.3f}'.format(epoch+1, n_epochs, L_E_cum/iterations, L_G_cum/iterations, L_D_cum/iterations, y_gen/iterations, y_recon/iterations))
+	# generate a set of fake images
+	X_fake = generate(G, n_z, n_samples=y_full.size[0])
+
+	IS = inception_score(I, X_fake)
+	FID = frechet_distance(I, X_fake, X_full)
+	eval_dict['inception'][epoch] = IS
+	eval_dict['frechet'][epoch] = FID
+
+	plot_eval_dict(eval_dict, epoch)
+	print('epoch {}/{}  |  L_E {:.4f}  |  L_G {:.4f}  |  L_D {:.4f}  |  y_gen {:.3f}  |  y_recon {:.3f} | IS {:.5f} | FID {:.3f}'.format(epoch+1, n_epochs, L_E_cum/iterations, L_G_cum/iterations, L_D_cum/iterations, y_gen/iterations, y_recon/iterations, IS, FID))

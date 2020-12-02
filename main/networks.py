@@ -141,3 +141,76 @@ class disc(nn.Module):
         x = self.conv4(x)
         y_pred = self.conv5(x).view(-1)
         return y_pred, D_l
+
+class I(nn.Module):
+    def __init__(self):
+        super(I, self).__init__()
+        # Conv2D(in_channels, out_channels, kernel size, stride, padding)
+
+        # conv1 (1, 150, 150)  ->  (32, 75, 75)
+        # conv2 (32, 64, 64)   ->  (64, 36, 36)
+        # conv3 (64, 4, 4)     ->  (128, 18, 18)
+        # conv4 (128, 4, 4)    ->  (256, 8, 8)
+        # conv5 (256, 8, 8)    ->  (3, 1, 1)
+
+
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(1, 6, 11, 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, stride=2))
+
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(6, 16, 5, 2, 1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.MaxPool2d(3, stride=2))
+
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(16, 24, 3, 1, 1),
+            nn.BatchNorm2d(24),
+            nn.ReLU())
+
+        self.conv4 = nn.Sequential(
+            nn.Conv2d(24, 24, 3, 1, 1),
+            nn.BatchNorm2d(24),
+            nn.ReLU())
+
+        self.conv5 = nn.Sequential(
+            nn.Conv2d(24, 16, 3, 1, 1),
+            nn.BatchNorm2d(16,),
+            nn.ReLU(),
+            nn.MaxPool2d(5, stride=4))
+
+        self.fid_layer = torch.zeros(256)
+
+        # 8192 -> 2048
+        # 2048 -> 512
+        # 512  -> 512
+        # 512  -> 3
+        self.linear1 = nn.Sequential(
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Dropout(),
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Dropout(),
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Dropout())
+        
+        self.linear2 = nn.Sequential(
+            nn.Linear(256, 3),
+            nn.Softmax(dim=1))
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.conv3(x)
+        x = self.conv4(x)
+        x = self.conv5(x)
+        x = x.view(-1, 256)
+        x = self.linear1(x)
+        self.fid_layer = x.view(-1, 256)
+        x = self.linear2(x)
+
+        return x
