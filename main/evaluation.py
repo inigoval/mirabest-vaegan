@@ -70,6 +70,7 @@ def frechet_distance(I, X_gen, X_real):
     f_gen = I.fid_layer.detach().cpu().numpy()
     _ = I(X_gen)
     f_real = I.fid_layer.detach().cpu().numpy()
+    print(f_real.shape)
     mu_gen, mu_real = np.mean(f_gen, axis=0), np.mean(f_real, axis=0)
     diff = np.mean(((mu_gen-mu_real)**2), axis=0)
 
