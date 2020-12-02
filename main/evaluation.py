@@ -25,14 +25,14 @@ def dset_array():
     ## load and normalise data ## 
     transform = torchvision.transforms.Compose([
     torchvision.transforms.ToTensor(),
-    torchvision.transforms.Normalize(mean=[0.5], std=[0.5])
+    torchvision.transforms.Normalize(mean=[0], std=[1])
     ])
     train_data = MiraBest_full(DATA_PATH, train=True, transform=transform, download=True)
     test_data = MiraBest_full(DATA_PATH, train=False, transform=transform, download=True)
     all_data = torch.utils.data.ConcatDataset((train_data, test_data))
     train_loader = torch.utils.data.DataLoader(all_data, batch_size=len(train_data), shuffle=True)
     X, y = next(iter(train_loader))
-    X, y = X.numpy(), y.numpy()
+    X, y = X.cpu(), y.cpu()
     return X, y
 
 def renormalize(X, mu=0.0032, std = 0.0352):
