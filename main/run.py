@@ -228,13 +228,13 @@ for epoch in range(n_epochs):
 		## plot image grid ##
 		if epoch % 10 == 0:
 			plot_grid(n_z, E, G, Z_plot, epoch, n_images=6)
-		
+
+		X_fake = generate(G, n_z, n_samples=y_full.shape[0])
 		## plot umap embeddings of latent space ##
 		if epoch % 10 == 0:
 			plot_z_real(X_full, y_full, E, epoch, n_z)
 			
 			# generate a set of fake images
-			X_fake = generate(G, n_z, n_samples=y_full.shape[0])
 			plot_z_fake(X_fake, E, epoch, n_z)
 
 		# generate a set of fake images

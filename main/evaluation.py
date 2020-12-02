@@ -70,7 +70,6 @@ def frechet_distance(I, X_gen, X_real):
     f_gen = I.fid_layer.detach().cpu().numpy()
     _ = I(X_gen)
     f_real = I.fid_layer.detach().cpu().numpy()
-    print(f_real.shape)
     mu_gen, mu_real = np.mean(f_gen, axis=0), np.mean(f_real, axis=0)
     diff = np.mean(((mu_gen-mu_real)**2), axis=0)
 
@@ -80,9 +79,7 @@ def frechet_distance(I, X_gen, X_real):
     if np.iscomplexobj(covprod):
         covprod = covprod.real
 
-    print(covprod.shape, chi_gen.shape, chi_real.shape)
-
-    fid = diff + np.mean(np.trace((chi_gen + chi_real - 2*covprod), axis1=1, axis2=2))
+    fid = diff + np.mean(np.trace((chi_gen + chi_real - 2*covprod), axis1=0, axis2=1))
     return fid
 
 def class_idx(y):
