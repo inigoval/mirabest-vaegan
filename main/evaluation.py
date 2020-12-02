@@ -101,7 +101,7 @@ def plot_eval_dict(eval_dict, epoch):
 
 def plot_z_real(X, y, E, epoch, n_z):
     fri_idx, frii_idx, hybrid_idx = class_idx(y)
-    embedding = E(torch.from_numpy(X).cuda())[0].view(-1, n_z).cpu().detach().numpy()
+    embedding = E(X.cuda())[0].view(-1, n_z).cpu().detach().numpy()
     reducer = umap.UMAP()
     umap_embedding = reducer.fit_transform(embedding)   
     plt.scatter(umap_embedding[fri_idx, 0], embedding[fri_idx, 1], c='red', label='fri', s=2, marker = 'x')
