@@ -54,7 +54,7 @@ def generate(G, n_z, n_samples=1000):
 
 def inception_score(I, X, eps = 1E-10):
     # normalise X for CNN evaluation
-    X = renormalize(X)
+    X = renormalize(X).cpu()
     p_yx = I(X)
     p_y = torch.mean(p_yx, 0)
     KL = torch.mean(p_yx * (torch.log(p_yx + eps) - torch.log(p_y + eps)))
