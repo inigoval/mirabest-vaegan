@@ -70,9 +70,10 @@ def frechet_distance(I, X_gen, X_real):
     _ = I(X_gen)
     f_real = I.fid_layer.detach().cpu().numpy()
     mu_gen, mu_real = np.mean(f_gen, axis=0), np.mean(f_real, axis=0)
-    chi_gen, chi_real = np.cov(f_gen), np.cov(f_real)
-    fid = np.mean((mu_gen-mu_real)^2, axis=0) + np.mean(np.trace((chi_gen + chi_real - 2*(np.matmul(chi_real, chi_gen))), axis1=1, axis2=2))
-    return fid
+    chi_gen, chi_real = np.cov(f_gen, rowvar=False), np.cov(f_real, rowvar=False)
+    fid1 = np.mean(((mu_gen-mu_real)**2), axis=0)
+    fid2 = np.mean(np.trace((chi_gen + chi_real - 2*(np.matmul(chi_real, chi_gen))), axis1=1, axis2=2))
+    return fid1 + fid2
 
 def class_idx(y):
     fri_idx = np.where(y < 4.5)
