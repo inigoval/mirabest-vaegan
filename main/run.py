@@ -8,10 +8,10 @@ import os
 
 from networks import enc, dec, disc, I
 from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
-from utilities import plot_images, KL_loss, sparsity_loss, plot_grid, plot_z, y_collapsed
+from utilities import plot_images, KL_loss, sparsity_loss, plot_grid, y_collapsed
 from dataloading import load_data
 from evaluation import dset_array, plot_z_fake, plot_z_real, generate, inception_score
-from evaluation import frechet_distance, plot_eval_dict
+from evaluation import frechet_distance, plot_eval_dict, plot_z
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

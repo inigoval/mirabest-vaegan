@@ -144,3 +144,14 @@ def plot_z_fake(I, X, E, epoch, n_z):
         plt.scatter(umap_embedding[hybrid_idx, 0], embedding[hybrid_idx, 1], c='green', label='hybrid', s=2, marker = 'x')
         plt.savefig(EMBEDDING_PATH_FAKE + '/embedding_{}.pdf'.format(epoch))
         plt.close()
+
+def plot_z(X, y, E, epoch):
+    X, y = X.detach().numpy(), y.detach().numpy()
+    fri_idx, frii_idx, hybrid_idx = class_idx(y)
+    embedding = E(torch.from_numpy(X).cuda())[0].cpu().detach().numpy()
+    plt.scatter(embedding[fri_idx, 0], embedding[fri_idx, 1], c='red', label='fri')
+    plt.scatter(embedding[frii_idx, 0], embedding[frii_idx, 1], c='blue', label='frii')
+    plt.scatter(embedding[hybrid_idx, 0], embedding[hybrid_idx, 1], c='green', label='hybrid')
+    plt.legend()
+    plt.savefig(FIG_PATH + '/embedding_{}.pdf'.format(epoch))
+    plt.close()
