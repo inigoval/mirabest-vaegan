@@ -74,7 +74,7 @@ trainLoader, testLoader = load_data(batch_size)
 L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': torch.zeros(n_epochs), 
 		  'L_D': torch.zeros(n_epochs), 'y_gen': torch.zeros(n_epochs), 'y_recon': torch.zeros(n_epochs)}
 
-eval_dict = {'x_plot': np.zeros(n_epochs), 'inception': np.zeros(n_epochs), 'frechet': np.zeros(n_epochs), 
+eval_dict = {'x_plot': np.arange(n_epochs), 'inception': np.zeros(n_epochs), 'frechet': np.zeros(n_epochs), 
 			 'likeness': np.zeros(n_epochs)}
 
 # load inception model

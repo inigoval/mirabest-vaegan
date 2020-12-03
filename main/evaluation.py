@@ -126,7 +126,7 @@ def plot_z_real(X, y, E, epoch, n_z):
         plt.scatter(umap_embedding[frii_idx, 0], embedding[frii_idx, 1], c='blue', label='frii', s=2, marker = 'x')
         plt.scatter(umap_embedding[hybrid_idx, 0], embedding[hybrid_idx, 1], c='green', label='hybrid', s=2, marker = 'x')
         plt.legend()
-        plt.savefig(EMBEDDING_PATH_FAKE + '/embedding_real_{}.pdf'.format(epoch))
+        plt.savefig(EMBEDDING_PATH_REAL + '/embedding_{}.pdf'.format(epoch))
         plt.close()
 
 def plot_z_fake(I, X, E, epoch, n_z):
