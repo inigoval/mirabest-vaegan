@@ -195,9 +195,9 @@ def plot_grid(n_z, E, G, Z_plot, epoch, n_images=6):
 
 
 def y_collapsed(y):
-    fri = torch.full((y.shape[0],), 0, dtype=torch.long).cuda()
-    frii = torch.full((y.shape[0],), 1, dtype=torch.long).cuda()
-    hybrid = torch.full((y.shape[0],), 2, dtype=torch.long).cuda()
+    fri = torch.full((y.shape[0],), 0, dtype=torch.long)
+    frii = torch.full((y.shape[0],), 1, dtype=torch.long)
+    hybrid = torch.full((y.shape[0],), 2, dtype=torch.long)
     y = torch.where(y > 4.5, y, fri)
     y = torch.where((y < 4.5) | (y > 7.5), y, frii)
     y = torch.where(y < 7.5, y, hybrid)
