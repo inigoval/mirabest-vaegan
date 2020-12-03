@@ -20,6 +20,9 @@ FIG_PATH = os.path.join(FILE_PATH, 'files', 'figs')
 
 EMBEDDING_PATH = os.path.join(EVAL_PATH, 'embeddings')
 
+EMBEDDING_PATH_REAL = os.path.join(EMBEDDING_PATH, 'real')
+EMBEDDING_PATH_FAKE = os.path.join(EMBEDDING_PATH, 'fake')
+
 cuda = torch.device('cuda')
 
 def dset_array():
@@ -91,9 +94,11 @@ def class_idx(y):
 def plot_eval_dict(eval_dict, epoch):
     fig, ax = plt.subplots(1,1)
     x_plot = eval_dict['x_plot']
+    IS, FID = eval_dict['inception'], eval_dict['frechet']
+    print(IS)
 
-    ## plot losses for each network ##
-    ax.plot(x_plot[:epoch], eval_dict['inception'][:epoch], label='inception score')
+    ## plot inception score ##
+    ax.plot(x_plot[:epoch], IS[:epoch], label='inception score')
     ax.set_xlabel('epoch')
     ax.legend()
     fig.savefig(EVAL_PATH + '/inception_score.pdf')
@@ -102,10 +107,11 @@ def plot_eval_dict(eval_dict, epoch):
     fig, ax = plt.subplots(1,1)
     x_plot = eval_dict['x_plot']
 
-    ## plot losses for each network ##
-    ax.plot(x_plot[:epoch], eval_dict['frechet'][:epoch], label='frechet distance')
+    ## plot frechet inception distance ##
+    ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
     ax.set_xlabel('epoch')
     ax.legend()
+    ax.set_ylim(0,10000)
     fig.savefig(EVAL_PATH + '/frechet_distance.pdf')
     plt.close(fig)
 
@@ -119,7 +125,7 @@ def plot_z_real(X, y, E, epoch, n_z):
     plt.scatter(umap_embedding[frii_idx, 0], embedding[frii_idx, 1], c='blue', label='frii', s=2, marker = 'x')
     plt.scatter(umap_embedding[hybrid_idx, 0], embedding[hybrid_idx, 1], c='green', label='hybrid', s=2, marker = 'x')
     plt.legend()
-    plt.savefig(EMBEDDING_PATH + '/embedding_real_{}.pdf'.format(epoch))
+    plt.savefig(EMBEDDING_PATH_FAKE + '/embedding_real_{}.pdf'.format(epoch))
     plt.close()
 
 def plot_z_fake(X, E, epoch, n_z):
@@ -127,5 +133,5 @@ def plot_z_fake(X, E, epoch, n_z):
     reducer = umap.UMAP()
     umap_embedding = reducer.fit_transform(embedding)   
     plt.scatter(umap_embedding[:,  0], embedding[:, 1], c='red', s=2, marker = 'x')
-    plt.savefig(EMBEDDING_PATH + '/embedding_fake_{}.pdf'.format(epoch))
+    plt.savefig(EMBEDDING_PATH_FAKE + '/embedding_{}.pdf'.format(epoch))
     plt.close()

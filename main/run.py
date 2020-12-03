@@ -26,8 +26,12 @@ EMBEDDING_PATH = os.path.join(EVAL_PATH, 'embeddings')
 FAKE_PATH = os.path.join(IMAGE_PATH, 'fake')
 RECON_PATH = os.path.join(IMAGE_PATH, 'reconstructed')
 
+EMBEDDING_PATH_REAL = os.path.join(EMBEDDING_PATH, 'real')
+EMBEDDING_PATH_FAKE = os.path.join(EMBEDDING_PATH, 'fake')
+
 path_list = [FILE_PATH, EVAL_PATH, DATA_PATH, CHECKPOINT_PATH, FIG_PATH, 
-			 IMAGE_PATH, EMBEDDING_PATH, FAKE_PATH, RECON_PATH]
+			 IMAGE_PATH, EMBEDDING_PATH, FAKE_PATH, RECON_PATH, EMBEDDING_PATH_FAKE,
+			 EMBEDDING_PATH_REAL]
 
 for path in path_list:
 	if not os.path.exists(path):
@@ -245,5 +249,7 @@ for epoch in range(n_epochs):
 		eval_dict['inception'][epoch] = IS
 		eval_dict['frechet'][epoch] = FID
 
+		print(eval_dict['inception')
+		 
 		plot_eval_dict(eval_dict, epoch)
 	print('epoch {}/{}  |  L_E {:.4f}  |  L_G {:.4f}  |  L_D {:.4f}  |  y_gen {:.3f}  |  y_recon {:.3f} | IS {:.5f} | FID {:.3f}'.format(epoch+1, n_epochs, L_E_cum/iterations, L_G_cum/iterations, L_D_cum/iterations, y_gen/iterations, y_recon/iterations, IS, FID))
