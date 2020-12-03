@@ -247,10 +247,9 @@ for epoch in range(n_epochs):
 
 		IS = inception_score(I, X_fake)
 		FID = frechet_distance(I, X_fake, X_full)
-		print(IS)
 		eval_dict['inception'][epoch] = IS
 		eval_dict['frechet'][epoch] = FID
-		print(eval_dict['inception'][:epoch])
+		print(eval_dict['inception'][epoch])
 		 
 		plot_eval_dict(eval_dict, epoch)
 
