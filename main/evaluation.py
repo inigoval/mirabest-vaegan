@@ -96,7 +96,7 @@ def plot_eval_dict(eval_dict, epoch):
     fig, ax = plt.subplots(1,1)
     x_plot = eval_dict['x_plot']
     IS, FID = eval_dict['inception'], eval_dict['frechet']
-    print(IS)
+    print(IS[:epoch])
 
     ## plot inception score ##
     ax.plot(x_plot[:epoch], IS[:epoch], label='inception score')
@@ -112,7 +112,7 @@ def plot_eval_dict(eval_dict, epoch):
     ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
     ax.set_xlabel('epoch')
     ax.legend()
-    ax.set_ylim(0,10000)
+    ax.set_ylim(0,5000)
     fig.savefig(EVAL_PATH + '/frechet_distance.pdf')
     plt.close(fig)
 
