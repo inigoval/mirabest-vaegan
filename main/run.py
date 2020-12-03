@@ -8,7 +8,7 @@ import os
 
 from networks import enc, dec, disc, I
 from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
-from utilities import plot_images, KL_loss, sparsity_loss, plot_grid, plot_z
+from utilities import plot_images, KL_loss, sparsity_loss, plot_grid, plot_z, y_collapsed
 from dataloading import load_data
 from evaluation import dset_array, plot_z_fake, plot_z_real, generate, inception_score
 from evaluation import frechet_distance, plot_eval_dict
@@ -81,6 +81,7 @@ eval_dict = {'x_plot': np.arange(n_epochs), 'inception': np.arange(n_epochs), 'f
 I = torch.load(EVAL_PATH + '/I.pt').cpu()
 # load full datasets for plotting latent space #
 X_full, y_full = dset_array()
+y_full = y_collapsed(y_full)
 
 # initialise noise for grid images so that latent vector is same every time
 Z_plot = Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)
@@ -239,7 +240,7 @@ for epoch in range(n_epochs):
 			plot_z_real(X_full, y_full, E, epoch, n_z)
 			
 			# generate a set of fake images
-			plot_z_fake(X_fake, E, epoch, n_z)
+			plot_z_fake(I, X_fake, E, epoch, n_z)
 
 		# generate a set of fake images
 		#X_fake = generate(G, n_z, n_samples=y_full.size[0])

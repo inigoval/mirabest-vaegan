@@ -9,6 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from scipy.linalg import sqrtm
 
 from dataloading import load_data, MiraBest_full
+from utilities import y_collapsed
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -86,9 +87,9 @@ def frechet_distance(I, X_gen, X_real):
     return fid
 
 def class_idx(y):
-    fri_idx = np.where(y < 4.5)
-    frii_idx = np.where((y > 4.5) & (y < 7.5))
-    hybrid_idx = np.where(y>7.5)
+    fri_idx = np.argwhere(y == 0)
+    frii_idx = np.argwhere(y==1)
+    hybrid_idx = np.argwhere(y==2)
     return fri_idx, frii_idx, hybrid_idx
 
 def plot_eval_dict(eval_dict, epoch):
@@ -117,21 +118,29 @@ def plot_eval_dict(eval_dict, epoch):
 
 
 def plot_z_real(X, y, E, epoch, n_z):
-    fri_idx, frii_idx, hybrid_idx = class_idx(y)
-    embedding = E(X.cuda())[0].view(-1, n_z).cpu().detach().numpy()
-    reducer = umap.UMAP()
-    umap_embedding = reducer.fit_transform(embedding)   
-    plt.scatter(umap_embedding[fri_idx, 0], embedding[fri_idx, 1], c='red', label='fri', s=2, marker = 'x')
-    plt.scatter(umap_embedding[frii_idx, 0], embedding[frii_idx, 1], c='blue', label='frii', s=2, marker = 'x')
-    plt.scatter(umap_embedding[hybrid_idx, 0], embedding[hybrid_idx, 1], c='green', label='hybrid', s=2, marker = 'x')
-    plt.legend()
-    plt.savefig(EMBEDDING_PATH_FAKE + '/embedding_real_{}.pdf'.format(epoch))
-    plt.close()
+    with torch.no_grad():
+        fri_idx, frii_idx, hybrid_idx = class_idx(y.numpy())
+        embedding = E(X.cuda())[0].view(-1, n_z).cpu().detach().numpy()
+        reducer = umap.UMAP()
+        umap_embedding = reducer.fit_transform(embedding)   
+        plt.scatter(umap_embedding[fri_idx, 0], embedding[fri_idx, 1], c='red', label='fri', s=2, marker = 'x')
+        plt.scatter(umap_embedding[frii_idx, 0], embedding[frii_idx, 1], c='blue', label='frii', s=2, marker = 'x')
+        plt.scatter(umap_embedding[hybrid_idx, 0], embedding[hybrid_idx, 1], c='green', label='hybrid', s=2, marker = 'x')
+        plt.legend()
+        plt.savefig(EMBEDDING_PATH_FAKE + '/embedding_real_{}.pdf'.format(epoch))
+        plt.close()
 
-def plot_z_fake(X, E, epoch, n_z):
-    embedding = E(X)[0].view(-1, n_z).cpu().detach().numpy()
-    reducer = umap.UMAP()
-    umap_embedding = reducer.fit_transform(embedding)   
-    plt.scatter(umap_embedding[:,  0], embedding[:, 1], c='red', s=2, marker = 'x')
-    plt.savefig(EMBEDDING_PATH_FAKE + '/embedding_{}.pdf'.format(epoch))
-    plt.close()
+def plot_z_fake(I, X, E, epoch, n_z):
+    with torch.no_grad():
+        embedding = E(X)[0].view(-1, n_z).cpu().detach().numpy()
+        y_hat = I(X.cpu())
+        _, y_pred = torch.max(y_hat, 1)
+        y_pred = y_pred.numpy()
+        fri_idx, frii_idx, hybrid_idx = class_idx(y_pred)
+        reducer = umap.UMAP()
+        umap_embedding = reducer.fit_transform(embedding)   
+        plt.scatter(umap_embedding[fri_idx, 0], embedding[fri_idx, 1], c='red', label='fri', s=2, marker = 'x')
+        plt.scatter(umap_embedding[frii_idx, 0], embedding[frii_idx, 1], c='blue', label='frii', s=2, marker = 'x')
+        plt.scatter(umap_embedding[hybrid_idx, 0], embedding[hybrid_idx, 1], c='green', label='hybrid', s=2, marker = 'x')
+        plt.savefig(EMBEDDING_PATH_FAKE + '/embedding_{}.pdf'.format(epoch))
+        plt.close()

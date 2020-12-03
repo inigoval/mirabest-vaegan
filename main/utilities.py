@@ -205,6 +205,15 @@ def plot_z(X, y, E, epoch):
     plt.savefig(FIG_PATH + '/embedding_{}.pdf'.format(epoch))
     plt.close()
 
+def y_collapsed(y):
+    fri = torch.full((y.shape[0],), 0, dtype=torch.long).cuda()
+    frii = torch.full((y.shape[0],), 1, dtype=torch.long).cuda()
+    hybrid = torch.full((y.shape[0],), 2, dtype=torch.long).cuda()
+    y = torch.where(y > 4.5, y, fri)
+    y = torch.where((y < 4.5) | (y > 7.5), y, frii)
+    y = torch.where(y < 7.5, y, hybrid)
+    return y
+
 def set_requires_grad(network, bool_val):
     for p in network.parameters():
         p.requires_grad = bool_val
