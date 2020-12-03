@@ -62,7 +62,7 @@ def inception_score(I, X, eps = 1E-10):
     X = renormalize(X).cpu()
     p_yx = I(X)
     p_y = torch.mean(p_yx, 0)
-    KL = torch.mean(p_yx * (torch.log(p_yx + eps) - torch.log(p_y + eps)))
+    KL = torch.mean(p_yx * (torch.log(p_yx + eps) - torch.log(p_y + eps))).numpy()
     # squeeze inception score between 0 and 1
     #IS = KL/3
     IS = np.exp((KL-3))
