@@ -6,7 +6,6 @@ import torch.nn as nn
 import os
 from mpl_toolkits.axes_grid1 import ImageGrid
 from dataloading import MiraBest_full
-from evaluation import class_idx
 
 # define paths for saving
 # define paths for saving
