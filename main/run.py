@@ -94,8 +94,8 @@ for epoch in range(n_epochs):
 		X, _ = data
 		X = X.cuda()
 		
-		#if i ==2:
-		#	break
+		if i ==2:
+			break
 
 		# check X is normalised properly 
 		if torch.max(X.pow(2)) > 1:
@@ -249,8 +249,7 @@ for epoch in range(n_epochs):
 		FID = frechet_distance(I, X_fake, X_full)
 		eval_dict['inception'][epoch] = IS
 		eval_dict['frechet'][epoch] = FID
-		print(eval_dict['inception'][epoch])
-		 
+		
 		plot_eval_dict(eval_dict, epoch)
 
 	print('epoch {}/{}  |  L_E {:.4f}  |  L_G {:.4f}  |  L_D {:.4f}  |  y_gen {:.3f}  |  y_recon {:.3f} | IS {:.5f} | FID {:.3f}'.format(epoch+1, n_epochs, L_E_cum/iterations, L_G_cum/iterations, L_D_cum/iterations, y_gen/iterations, y_recon/iterations, IS, FID))

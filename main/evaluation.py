@@ -97,7 +97,6 @@ def plot_eval_dict(eval_dict, epoch):
     x_plot = eval_dict['x_plot']
     IS, FID = eval_dict['inception'], eval_dict['frechet']
     print(IS[:epoch])
-
     ## plot inception score ##
     ax.plot(x_plot[:epoch], IS[:epoch], label='inception score')
     ax.set_xlabel('epoch')
