@@ -40,7 +40,7 @@ def dset_array():
     X, y = X.cpu(), y.cpu()
     return X, y
 
-def renormalize(X, mu=0.0032, std = 0.0352):
+def renormalize(X, mu=0.0031, std = 0.0352):
     X = (X - mu)/std
     return X
 
@@ -68,22 +68,23 @@ def inception_score(I, X, eps = 1E-10):
     IS = np.exp((KL-3))
     return IS
 
-def frechet_distance(I, X_gen, X_real):
-    X_gen, X_real = renormalize(X_gen).cpu(), renormalize(X_real).cpu()
+def fid(I, X_gen, X_real):
+    # X_gen, X_real = renormalize(X_gen).cpu(), renormalize(X_real).cpu()
     _ = I(X_gen)
     f_gen = I.fid_layer.detach().cpu().numpy()
-    _ = I(X_gen)
+    _ = I(X_real)
     f_real = I.fid_layer.detach().cpu().numpy()
     mu_gen, mu_real = np.mean(f_gen, axis=0), np.mean(f_real, axis=0)
-    diff = np.mean(((mu_gen-mu_real)**2), axis=0)
 
-    chi_gen, chi_real = np.cov(f_gen, rowvar=False), np.cov(f_real, rowvar=False)
-    covprod = sqrtm((np.matmul(chi_real, chi_gen)))
+    sigma_gen, sigma_real = np.cov(f_gen, rowvar=False), np.cov(f_real, rowvar=False)
+    S = sqrtm((np.dot(sigma_gen, sigma_real)))
 
     if np.iscomplexobj(covprod):
         covprod = covprod.real
 
-    fid = diff + np.mean(np.trace((chi_gen + chi_real - 2*covprod), axis1=0, axis2=1))
+    Dmu = np.square(mu_gen - mu_real).sum()
+
+    fid = Dmu + np.mean(np.trace((sigma_gen + sigma_real - 2*S), axis1=0, axis2=1))
     return fid
 
 def class_idx(y):
@@ -114,7 +115,6 @@ def plot_eval_dict(eval_dict, epoch):
     fig.savefig(EVAL_PATH + '/frechet_distance.pdf')
     plt.close(fig)
 
-
 def plot_z_real(X, y, E, epoch, n_z):
     with torch.no_grad():
         fri_idx, frii_idx, hybrid_idx = class_idx(y.numpy())
@@ -125,7 +125,7 @@ def plot_z_real(X, y, E, epoch, n_z):
         plt.scatter(umap_embedding[frii_idx, 0], embedding[frii_idx, 1], c='blue', label='frii', s=2, marker = 'x')
         plt.scatter(umap_embedding[hybrid_idx, 0], embedding[hybrid_idx, 1], c='green', label='hybrid', s=2, marker = 'x')
         plt.legend()
-        plt.savefig(EMBEDDING_PATH_REAL + '/embedding_{}.pdf'.format(epoch))
+        plt.savefig(EMBEDDING_PATH_REAL + '/embedding_real_{}.pdf'.format(epoch))
         plt.close()
 
 def plot_z_fake(I, X, E, epoch, n_z):
@@ -140,7 +140,8 @@ def plot_z_fake(I, X, E, epoch, n_z):
         plt.scatter(umap_embedding[fri_idx, 0], embedding[fri_idx, 1], c='red', label='fri', s=2, marker = 'x')
         plt.scatter(umap_embedding[frii_idx, 0], embedding[frii_idx, 1], c='blue', label='frii', s=2, marker = 'x')
         plt.scatter(umap_embedding[hybrid_idx, 0], embedding[hybrid_idx, 1], c='green', label='hybrid', s=2, marker = 'x')
-        plt.savefig(EMBEDDING_PATH_FAKE + '/embedding_{}.pdf'.format(epoch))
+        plt.legend()
+        plt.savefig(EMBEDDING_PATH_FAKE + '/embedding_fake_{}.pdf'.format(epoch))
         plt.close()
 
 def plot_z(X, y, E, epoch):

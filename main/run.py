@@ -11,7 +11,7 @@ from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
 from utilities import plot_images, KL_loss, sparsity_loss, plot_grid, y_collapsed
 from dataloading import load_data
 from evaluation import dset_array, plot_z_fake, plot_z_real, generate, inception_score
-from evaluation import frechet_distance, plot_eval_dict, plot_z
+from evaluation import fid, plot_eval_dict, plot_z
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -74,7 +74,7 @@ trainLoader, testLoader = load_data(batch_size)
 L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': torch.zeros(n_epochs), 
 		  'L_D': torch.zeros(n_epochs), 'y_gen': torch.zeros(n_epochs), 'y_recon': torch.zeros(n_epochs)}
 
-eval_dict = {'x_plot': np.arange(n_epochs), 'inception': np.zeros(n_epochs), 'frechet': np.zeros(n_epochs), 
+eval_dict = {'x_plot': np.arange(n_epochs), 'inception': np.zeros(n_epochs), 'fid': np.zeros(n_epochs), 
 			 'likeness': np.zeros(n_epochs)}
 
 # load inception model
@@ -246,9 +246,9 @@ for epoch in range(n_epochs):
 		#X_fake = generate(G, n_z, n_samples=y_full.size[0])
 
 		IS = inception_score(I, X_fake)
-		FID = frechet_distance(I, X_fake, X_full)
+		FID = fid(I, X_fake, X_full)
 		eval_dict['inception'][epoch] = IS
-		eval_dict['frechet'][epoch] = FID
+		eval_dict['fid'][epoch] = FID
 		
 		plot_eval_dict(eval_dict, epoch)
 

@@ -199,7 +199,7 @@ class I(nn.Module):
             nn.Dropout())
         
         self.linear2 = nn.Sequential(
-            nn.Linear(256, 3),
+            nn.Linear(256, 2),
             nn.Softmax(dim=1))
 
     def forward(self, x):
@@ -209,8 +209,8 @@ class I(nn.Module):
         x = self.conv4(x)
         x = self.conv5(x)
         x = x.view(-1, 256)
+        self.fid_layer = x
         x = self.linear1(x)
-        self.fid_layer = x.view(-1, 256)
         x = self.linear2(x)
 
         return x

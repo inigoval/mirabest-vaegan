@@ -8,6 +8,7 @@ import sys
 import pickle
 import torch.utils.data as data
 from torchvision.datasets.utils import download_url, check_integrity
+import torchvision.transforms as T
 import torch
 
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -15,20 +16,20 @@ DATA_PATH = os.path.join(FILE_PATH, 'data')
 
 class MiraBest_full(data.Dataset):
     """​
-Inspired by `HTRU1 <https://as595.github.io/HTRU1/>`_ Dataset.
+    Inspired by `HTRU1 <https://as595.github.io/HTRU1/>`_ Dataset.
 
-Args:
-    root (string): Root directory of dataset where directory
-        ``MiraBest-full.py` exists or will be saved to if download is set to True.
-    train (bool, optional): If True, creates dataset from training set, otherwise
-        creates from test set.
-    transform (callable, optional): A function/transform that takes in an PIL image
-        and returns a transformed version. E.g, ``transforms.RandomCrop``
-    target_transform (callable, optional): A function/transform that takes in the
-        target and transforms it.
-    download (bool, optional): If true, downloads the dataset from the internet and
-        puts it in root directory. If dataset is already downloaded, it is not
-        downloaded again."""
+    Args:
+        root (string): Root directory of dataset where directory
+            ``MiraBest-full.py` exists or will be saved to if download is set to True.
+        train (bool, optional): If True, creates dataset from training set, otherwise
+            creates from test set.
+        transform (callable, optional): A function/transform that takes in an PIL image
+            and returns a transformed version. E.g, ``transforms.RandomCrop``
+        target_transform (callable, optional): A function/transform that takes in the
+            target and transforms it.
+        download (bool, optional): If true, downloads the dataset from the internet and
+            puts it in root directory. If dataset is already downloaded, it is not
+            downloaded again."""
 
     base_folder = 'batches'
     url = "http://www.jb.man.ac.uk/research/MiraBest/full_dataset/MiraBest_full_batches.tar.gz"
@@ -115,7 +116,7 @@ Args:
         """
         Args:
             index (int): Index
-​
+
         Returns:
             tuple: (image, target) where target is index of the target class.
         """
@@ -173,8 +174,11 @@ Args:
 
 def load_data(batch_size):
     transform = torchvision.transforms.Compose([
-    torchvision.transforms.ToTensor(),
-    torchvision.transforms.Normalize(mean=[0], std=[1])
+    T.RandomVerticalFlip(p=0.21),
+    T.RandomHorizontalFlip(p=0.21),
+    T.RandomApply((T.RandomRotation(180),), p=0.21),
+    T.ToTensor(),
+    T.Normalize(mean=[0], std=[1])
     ])
     train_data = MiraBest_full(DATA_PATH, train=True, transform=transform, download=True)
     test_data = MiraBest_full(DATA_PATH, train=False, transform=transform, download=True)
