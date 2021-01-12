@@ -60,13 +60,13 @@ def generate(G, n_z, n_samples=1000):
 
 def inception_score(I, X, eps = 1E-10):
     # normalise X for CNN evaluation
-    X = renormalize(X).cpu()
+    X = renormalize(X)
     p_yx = I(X)
     p_y = torch.mean(p_yx, 0)
-    KL = torch.mean(p_yx * (torch.log(p_yx + eps) - torch.log(p_y + eps))).numpy()
+    KL = torch.mean(p_yx * (torch.log(p_yx + eps) - torch.log(p_y + eps))).detach().cpu().numpy()
     # squeeze inception score between 0 and 1
     #IS = KL/3
-    IS = np.exp((KL-3))
+    IS = np.exp((KL-2))
     return IS
 
 def fid(I, X_gen, X_real):

@@ -238,7 +238,7 @@ for epoch in range(n_epochs):
 			plot_images(X, E, G, n_z, epoch)
 
 		# generate a set of fake images
-		X_fake = generate(G, n_z, n_samples=y_full.shape[0])
+		X_fake = generate(G, n_z, n_samples=y_full.shape[0]).cuda()
 
 		## plot umap embeddings of latent space ##
 		#if epoch % 10 == 0:

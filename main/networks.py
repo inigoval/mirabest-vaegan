@@ -10,8 +10,8 @@ n_z = 32
 
 # feature map sizes
 n_ef = 16
-n_gf = 32
-n_df = 32
+n_gf = 16
+n_df = 16
 
 # number of channels
 n_channels = 1
@@ -61,9 +61,11 @@ class enc(nn.Module):
         return mu, logvar
 
 class dec(nn.Module):
-    # conv1 (100, 1, 1)   ->  (256, 8,  8)
-    # conv2 (32, 7, 7)   ->  (16, 18, 18)
-    # conv3 (16, 14, 14) ->  (1, 36, 36)
+    # conv1 (100, 1, 1)   ->  (128, 8,  8)
+    # conv2 (128, 8, 8)   ->  (64, 4, 4)
+    # conv3 (64, 4, 4)    ->  (32, 34, 34)
+    # conv4 (32, 34, 34)  ->  (16, 70, 70)
+    # conv5 (16, 70, 70)  ->  (1, 150, 150)
     def __init__(self):
         super(dec, self).__init__()
         self.conv1 = nn.Sequential(
@@ -77,17 +79,17 @@ class dec(nn.Module):
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv3 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf*4, n_gf*2, 4, 2, 1, bias =False),
+            nn.ConvTranspose2d(n_gf*4, n_gf*2, 6, 2, 1, bias =False),
             nn.BatchNorm2d(n_gf*2),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv4 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf*2, n_gf, 7, 2, 1, bias=False),
+            nn.ConvTranspose2d(n_gf*2, n_gf, 6, 2, 1, bias=False),
             nn.BatchNorm2d(n_gf),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv5 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf, 1, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(n_gf, 1, 14, 2, 1, bias=False),
             nn.Sigmoid())
 
     def forward(self, z):
@@ -103,24 +105,24 @@ class disc(nn.Module):
         super(disc, self).__init__()
         # Conv2D(in_channels, out_channels, kernel size, stride, padding)
 
-        # conv1 (1, 150, 150)  ->  (32, 75, 75)
-        # conv2 (32, 64, 64)   ->  (64, 36, 36)
-        # conv3 (64, 4, 4)    ->  (128, 18, 18)
-        # conv4 (128, 4, 4)    ->  (256, 8, 8)
-        # conv5 (256, 8, 8)    ->  (1, 1, 1)
+        # conv1 (1, 150, 150)  ->  (16, 70, 70)
+        # conv2 (16, 70, 70)   ->  (32, 34, 34)
+        # conv3 (32, 34, 34)    ->  (64, 18, 18)
+        # conv4 (64, 4, 4)    ->  (128, 8, 8)
+        # conv5 (128, 8, 8)    ->  (1, 1, 1)
 
 
         self.conv1 = nn.Sequential(
-            nn.Conv2d(1, n_df, 4, 2, 1, bias=False),
+            nn.Conv2d(1, n_df, 14, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv2 = nn.Sequential(
-            nn.Conv2d(n_df, n_df*2, 7, 2, 1, bias=False),
+            nn.Conv2d(n_df, n_df*2, 6, 2, 1, bias=False),
             nn.BatchNorm2d(n_df*2),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv3 = nn.Sequential(
-            nn.Conv2d(n_df*2, n_df*4, 4, 2, 1, bias=False),
+            nn.Conv2d(n_df*2, n_df*4, 6, 2, 1, bias=False),
             nn.BatchNorm2d(n_df*4),
             nn.LeakyReLU(0.2, inplace=True))
 
