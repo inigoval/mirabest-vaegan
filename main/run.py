@@ -260,4 +260,4 @@ for epoch in range(n_epochs):
 		
 		plot_eval_dict(eval_dict, epoch)
 
-	print('epoch {}/{}  |  samples:{} |  L_E {:.4f}  |  L_G {:.4f}  |  L_D {:.4f}  |  y_gen {:.3f}  |  y_recon {:.3f} | IS {:.5f} | FID {:.3f}'.format(epoch+1, n_epochs, samples, L_E_cum/iterations, L_G_cum/iterations, L_D_cum/iterations, y_gen/iterations, y_recon/iterations, IS, FID))
+	print('epoch {}/{}  |  samples:{} |  L_E {:.4f}  |  L_G {:.4f}  |  L_D {:.4f}  |  y_gen {:.3f}  |  y_recon {:.3f} | IS {:.5f} | FID {:.3f}'.format(epoch+1, n_epochs, samples, L_E_cum/(iterations*n_cycles), L_G_cum/(iterations*n_cycles), L_D_cum/(iterations*n_cycles), y_gen/(iterations*n_cycles), y_recon/(iterations*n_cycles), IS, FID))
