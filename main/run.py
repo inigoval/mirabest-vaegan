@@ -91,7 +91,7 @@ for epoch in range(n_epochs):
 	L_E_cum, L_G_cum, L_D_cum  = 0, 0, 0
 	y_recon, y_gen = 0, 0
 	p_flip = p_flip_ann(epoch, n_epochs)
-		for j in np.arange(50)
+	for j in np.arange(50)
 		for i, data in enumerate(trainLoader , 0):
 			X, _ = data
 			samples += X.size()[0]
