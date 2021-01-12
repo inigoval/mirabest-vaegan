@@ -93,8 +93,8 @@ def test_prob(D, testLoader, n_test, bool_val, noise_scale, epoch, n_epochs):
     D_sum = 0.
     for data in testLoader:
         X, _  = data
-        X = add_noise(bool_val, X, noise_scale, epoch, n_epochs).cuda()
-        D_X = D(X)[0].view(-1)
+        X = add_noise(bool_val, X.cpu(), noise_scale, epoch, n_epochs).cuda()
+        D_X = D(X.cuda())[0].view(-1)
         D_sum += torch.sum(D_X).item()
     D_avg = D_sum/n_test
     return D_avg
