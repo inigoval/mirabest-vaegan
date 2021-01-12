@@ -210,7 +210,7 @@ for epoch in range(n_epochs):
 			L_D_cum += L_D.item()
 
 			iterations = i
-.
+
 	## insert cumulative losses into dictionary ##
 	L_dict['L_E'][epoch] = L_E_cum/(iterations*n_cycles)
 	L_dict['L_G'][epoch] = L_G_cum/(iterations*n_cycles)
