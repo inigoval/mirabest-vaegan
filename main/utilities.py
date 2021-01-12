@@ -34,12 +34,10 @@ def add_noise(bool_val, X, noise_scale, epoch, n_epochs):
     else:
         return X
 
-
 def p_flip_ann(epoch, n_epochs):
     p_flip = 1 - torch.FloatTensor(np.array(epoch/(n_epochs*0.5)))
     p_flip = torch.clamp(p_flip, 0,1)
     return p_flip
-
 
 def labels(label_flip, smoothing, p_flip, smoothing_scale, n_X):
     ones = torch.ones(n_X, dtype = torch.float).cuda()
@@ -59,20 +57,18 @@ def labels(label_flip, smoothing, p_flip, smoothing_scale, n_X):
 
     return ones, zeros
 
-
 # define losses
 scalar_tensor = torch.ones(1)
+
 def KL_loss(mu, logvar):
     kl = -0.5 * torch.mean(1  + logvar - logvar.exp() - mu.pow(2)).view(1)
     #print('kl loss: ', kl)
     assert kl.size() == scalar_tensor.size()
     return kl
 
-
 def sparsity_loss(X):
     L = torch.mean(torch.pow(X, 0.01))
     return L
-
 
 # sample z using random sample from normal distribution (epsilon)
 def z_sample(mu, logvar):
@@ -82,7 +78,6 @@ def z_sample(mu, logvar):
     #print(z_tilde.requires_grad)
     assert z_tilde.size() == mu.size()
     return z_tilde
-
 
 def plot_losses(L_dict, epoch):
     fig, ax = plt.subplots(1,1)
@@ -193,7 +188,6 @@ def plot_grid(n_z, E, G, Z_plot, epoch, n_images=6):
     plt.savefig(RECON_PATH + '/grid_X_tilde_{}.pdf'.format(epoch))
     plt.close(fig)
 
-
 def y_collapsed(y):
     fri = torch.full((y.shape[0],), 0, dtype=torch.long)
     frii = torch.full((y.shape[0],), 1, dtype=torch.long)
@@ -207,7 +201,6 @@ def set_requires_grad(network, bool_val):
     for p in network.parameters():
         p.requires_grad = bool_val
 
-
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
@@ -215,4 +208,3 @@ def weights_init(m):
     elif classname.find('BatchNorm') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
-

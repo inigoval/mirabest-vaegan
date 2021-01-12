@@ -172,6 +172,44 @@ class MiraBest_full(data.Dataset):
         fmt_str += '{0}{1}'.format(tmp, self.target_transform.__repr__().replace('\n', '\n' + ' ' * len(tmp)))
         return fmt_str
 
+class MB_nohybrids(MiraBest_full):
+    """
+    Child class to load only frii/frii samples
+    """
+    def __init__(self, *args, **kwargs):
+        super(MB_nohybrids, self).__init__(*args, **kwargs)
+
+        fr1_list = [0,1,2,3,4]
+        fr2_list = [5,6,7]
+        exclude_list = [8,9]
+
+        if exclude_list == []:
+            return
+        if self.train:
+            targets = np.array(self.targets)
+            exclude = np.array(exclude_list).reshape(1, -1)
+            exclude_mask = ~(targets.reshape(-1, 1) == exclude).any(axis=1)
+            fr1 = np.array(fr1_list).reshape(1, -1)
+            fr2 = np.array(fr2_list).reshape(1, -1)
+            fr1_mask = (targets.reshape(-1, 1) == fr1).any(axis=1)
+            fr2_mask = (targets.reshape(-1, 1) == fr2).any(axis=1)
+            targets[fr1_mask] = 0 # set all FRI to Class~0
+            targets[fr2_mask] = 1 # set all FRII to Class~1
+            self.data = self.data[exclude_mask]
+            self.targets = targets[exclude_mask].tolist()
+        else:
+            targets = np.array(self.targets)
+            exclude = np.array(exclude_list).reshape(1, -1)
+            exclude_mask = ~(targets.reshape(-1, 1) == exclude).any(axis=1)
+            fr1 = np.array(fr1_list).reshape(1, -1)
+            fr2 = np.array(fr2_list).reshape(1, -1)
+            fr1_mask = (targets.reshape(-1, 1) == fr1).any(axis=1)
+            fr2_mask = (targets.reshape(-1, 1) == fr2).any(axis=1)
+            targets[fr1_mask] = 0 # set all FRI to Class 0
+            targets[fr2_mask] = 1 # set all FRII to Class 1
+            self.data = self.data[exclude_mask]
+            self.targets = targets[exclude_mask].tolist()
+
 def load_data(batch_size):
     transform = torchvision.transforms.Compose([
     T.RandomVerticalFlip(p=0.21),
@@ -180,9 +218,11 @@ def load_data(batch_size):
     T.ToTensor(),
     T.Normalize(mean=[0], std=[1])
     ])
-    train_data = MiraBest_full(DATA_PATH, train=True, transform=transform, download=True)
-    test_data = MiraBest_full(DATA_PATH, train=False, transform=transform, download=True)
-    all_data = torch.utils.data.ConcatDataset((train_data, test_data))
-    trainLoader = torch.utils.data.DataLoader(all_data, batch_size=batch_size, shuffle=True)
+    train_data = MB_nohybrids(DATA_PATH, train=True, transform=transform, download=True)
+    test_data = MB_nohybrids(DATA_PATH, train=False, transform=transform, download=True)
+    n_test = len(test_data)
+    # all_data = torch.utils.data.ConcatDataset((train_data, test_data))
+    # trainLoader = torch.utils.data.DataLoader(all_data, batch_size=batch_size, shuffle=True)
+    trainLoader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
     testLoader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=True)
-    return trainLoader, testLoader
+    return trainLoader, testLoader, n_test

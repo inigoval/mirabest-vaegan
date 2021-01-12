@@ -79,13 +79,24 @@ def fid(I, X_gen, X_real):
     sigma_gen, sigma_real = np.cov(f_gen, rowvar=False), np.cov(f_real, rowvar=False)
     S = sqrtm((np.dot(sigma_gen, sigma_real)))
 
-    if np.iscomplexobj(covprod):
-        covprod = covprod.real
+    if np.iscomplexobj(S):
+        S = S.real
 
     Dmu = np.square(mu_gen - mu_real).sum()
 
-    fid = Dmu + np.mean(np.trace((sigma_gen + sigma_real - 2*S), axis1=0, axis2=1))
+    fid = Dmu + np.trace((sigma_gen + sigma_real - 2*S), axis1=0, axis2=1)
     return fid
+
+def test_prob(D, testLoader, n_test):
+    """ Evaluate the discriminator output for held out real samples (to detect overfitting) """
+    D_sum = 0.
+    for data in testLoader:
+        X, _  = data
+        X = X.cuda()
+        D_X = D(X).view(-1)
+        D_sum += torch.sum(D_X).item()
+    D_avg = D_sum/n_test
+    return D_avg
 
 def class_idx(y):
     fri_idx = np.argwhere(y == 0)
@@ -96,7 +107,8 @@ def class_idx(y):
 def plot_eval_dict(eval_dict, epoch):
     fig, ax = plt.subplots(1,1)
     x_plot = eval_dict['x_plot']
-    IS, FID = eval_dict['inception'], eval_dict['frechet']
+    IS, FID, D_X_test = eval_dict['inception'], eval_dict['frechet'], eval_dict['D_X_test']
+
     ## plot inception score ##
     ax.plot(x_plot[:epoch], IS[:epoch], label='inception score')
     ax.set_xlabel('epoch')
@@ -105,7 +117,6 @@ def plot_eval_dict(eval_dict, epoch):
     plt.close(fig)
 
     fig, ax = plt.subplots(1,1)
-    x_plot = eval_dict['x_plot']
 
     ## plot frechet inception distance ##
     ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
@@ -114,6 +125,17 @@ def plot_eval_dict(eval_dict, epoch):
     ax.set_ylim(0,5000)
     fig.savefig(EVAL_PATH + '/frechet_distance.pdf')
     plt.close(fig)
+
+    fig, ax = plt.subplots(1,1)
+
+    ## plot overfitting score, 1 is no overfitting 0 is completely overfitted ##
+    ax.plot(x_plot[:epoch], D_X_test[:epoch], label='D(X_test)')
+    ax.set_xlabel('epoch')
+    ax.legend()
+    #ax.set_ylim(0,1)
+    fig.savefig(EVAL_PATH + '/overfitting_score.pdf')
+    plt.close(fig)
+
 
 def plot_z_real(X, y, E, epoch, n_z):
     with torch.no_grad():

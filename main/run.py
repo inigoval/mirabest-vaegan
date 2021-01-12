@@ -11,7 +11,7 @@ from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
 from utilities import plot_images, KL_loss, sparsity_loss, plot_grid, y_collapsed
 from dataloading import load_data
 from evaluation import dset_array, plot_z_fake, plot_z_real, generate, inception_score
-from evaluation import fid, plot_eval_dict, plot_z
+from evaluation import fid, plot_eval_dict, plot_z, test_prob
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -53,7 +53,7 @@ BCE_loss = nn.BCELoss(reduction='mean')
 batch_size = 32
 batch_size_test = 1000
 n_z = 32
-n_epochs = 1000
+n_epochs = 200
 gamma = 1  # weighting for style (L_llike) in generator loss function
 # smoothing parameters
 smoothing = False
@@ -68,14 +68,14 @@ label_flip = False
 n_images = 6
 
 ## load and normalise data ## 
-trainLoader, testLoader = load_data(batch_size)
+trainLoader, testLoader, n_test = load_data(batch_size)
 
 # assign dictionary to hold plotting values
 L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': torch.zeros(n_epochs), 
 		  'L_D': torch.zeros(n_epochs), 'y_gen': torch.zeros(n_epochs), 'y_recon': torch.zeros(n_epochs)}
 
-eval_dict = {'x_plot': np.arange(n_epochs), 'inception': np.zeros(n_epochs), 'fid': np.zeros(n_epochs), 
-			 'likeness': np.zeros(n_epochs)}
+eval_dict = {'x_plot': np.arange(n_epochs), 'n_samples': np.zeros(n_epochs), 'inception': np.zeros(n_epochs), 'fid': np.zeros(n_epochs), 
+			 'likeness': np.zeros(n_epochs), 'D_X_test':np.zeros(n_epochs)}
 
 # load inception model
 I = torch.load(EVAL_PATH + '/I.pt').cpu()
@@ -85,6 +85,7 @@ y_full = y_collapsed(y_full)
 
 # initialise noise for grid images so that latent vector is same every time
 Z_plot = Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)
+samples = 0 
 
 for epoch in range(n_epochs):
 	L_E_cum, L_G_cum, L_D_cum  = 0, 0, 0
@@ -92,6 +93,7 @@ for epoch in range(n_epochs):
 	p_flip = p_flip_ann(epoch, n_epochs)
 	for i, data in enumerate(trainLoader , 0):
 		X, _ = data
+		samples += _.size[0].item()
 		X = X.cuda()
 		
 		#if i ==2:
@@ -233,22 +235,26 @@ for epoch in range(n_epochs):
 		## plot image grid ##
 		if epoch % 10 == 0:
 			plot_grid(n_z, E, G, Z_plot, epoch, n_images=6)
-
-		X_fake = generate(G, n_z, n_samples=y_full.shape[0])
-		## plot umap embeddings of latent space ##
-		if epoch % 10 == 0:
-			plot_z_real(X_full, y_full, E, epoch, n_z)
-			
-			# generate a set of fake images
-			plot_z_fake(I, X_fake, E, epoch, n_z)
+			plot_images(X, E, G, n_z, epoch)
 
 		# generate a set of fake images
-		#X_fake = generate(G, n_z, n_samples=y_full.size[0])
+		X_fake = generate(G, n_z, n_samples=y_full.shape[0])
+
+		## plot umap embeddings of latent space ##
+		#if epoch % 10 == 0:
+		#	plot_z_real(X_full, y_full, E, epoch, n_z)
+			
+			# generate a set of fake images
+		#	plot_z_fake(I, X_fake, E, epoch, n_z)
+
 
 		IS = inception_score(I, X_fake)
 		FID = fid(I, X_fake, X_full)
+		eval_dict['n_samples'][epoch] = samples
 		eval_dict['inception'][epoch] = IS
 		eval_dict['fid'][epoch] = FID
+		eval_dict['D_X_test'][epoch] = test_prob(D, testLoader, n_test)
+		
 		
 		plot_eval_dict(eval_dict, epoch)
 
