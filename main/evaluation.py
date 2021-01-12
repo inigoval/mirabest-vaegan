@@ -94,7 +94,7 @@ def test_prob(D, testLoader, n_test):
     for data in testLoader:
         X, _  = data
         X = X.cuda()
-        D_X = D(X).view(-1)
+        D_X = D(X)[0].view(-1)
         D_sum += torch.sum(D_X).item()
     D_avg = D_sum/n_test
     return D_avg
@@ -108,7 +108,7 @@ def class_idx(y):
 def plot_eval_dict(eval_dict, epoch):
     fig, ax = plt.subplots(1,1)
     x_plot = eval_dict['x_plot']
-    IS, FID, D_X_test = eval_dict['inception'], eval_dict['frechet'], eval_dict['D_X_test']
+    IS, FID, D_X_test = eval_dict['inception'], eval_dict['fid'], eval_dict['D_X_test']
 
     ## plot inception score ##
     ax.plot(x_plot[:epoch], IS[:epoch], label='inception score')

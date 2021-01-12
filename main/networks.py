@@ -69,7 +69,7 @@ class dec(nn.Module):
     def __init__(self):
         super(dec, self).__init__()
         self.conv1 = nn.Sequential(
-            nn.ConvTranspose2d(n_z, n_gf*8, 8, 1, 0, bias = False),
+            nn.ConvTranspose2d(n_z, n_gf*8, 7, 1, 0, bias = False),
             nn.BatchNorm2d(n_gf*8),
             nn.LeakyReLU(0.2, inplace=True))
 
@@ -132,7 +132,7 @@ class disc(nn.Module):
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv5 = nn.Sequential(
-            nn.Conv2d(n_df*8, 1, 8, 1, 0, bias=False),
+            nn.Conv2d(n_df*8, 1, 7, 1, 0, bias=False),
             nn.Sigmoid())
 
     def forward(self, x):
