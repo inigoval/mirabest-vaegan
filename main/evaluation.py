@@ -26,7 +26,7 @@ EMBEDDING_PATH_FAKE = os.path.join(EMBEDDING_PATH, 'fake')
 
 cuda = torch.device('cuda')
 
-def dset_array():
+def dset_array(cuda=False):
     ## load and normalise data ## 
     transform = torchvision.transforms.Compose([
     torchvision.transforms.ToTensor(),
@@ -37,9 +37,10 @@ def dset_array():
     all_data = torch.utils.data.ConcatDataset((train_data, test_data))
     train_loader = torch.utils.data.DataLoader(all_data, batch_size=len(train_data), shuffle=True)
     X, y = next(iter(train_loader))
-    X, y = X.cpu(), y.cpu()
-    return X, y
-
+    if cuda:
+        return X.cuda(), y.cuda()
+    else:
+        return X.cpu(), y.cpu()
 def renormalize(X, mu=0.0031, std = 0.0352):
     X = (X - mu)/std
     return X

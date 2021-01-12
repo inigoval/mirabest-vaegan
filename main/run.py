@@ -93,7 +93,7 @@ for epoch in range(n_epochs):
 	p_flip = p_flip_ann(epoch, n_epochs)
 	for i, data in enumerate(trainLoader , 0):
 		X, _ = data
-		samples += _.size[0].item()
+		samples += X.size()[0]
 		X = X.cuda()
 		
 		if i ==2:
