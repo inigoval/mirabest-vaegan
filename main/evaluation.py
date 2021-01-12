@@ -136,7 +136,6 @@ def plot_eval_dict(eval_dict, epoch):
     fig.savefig(EVAL_PATH + '/overfitting_score.pdf')
     plt.close(fig)
 
-
 def plot_z_real(X, y, E, epoch, n_z):
     with torch.no_grad():
         fri_idx, frii_idx, hybrid_idx = class_idx(y.numpy())

@@ -96,8 +96,8 @@ for epoch in range(n_epochs):
 		samples += _.size[0].item()
 		X = X.cuda()
 		
-		#if i ==2:
-		#	break
+		if i ==2:
+			break
 
 		# check X is normalised properly 
 		if torch.max(X.pow(2)) > 1:
