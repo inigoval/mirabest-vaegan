@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from scipy.linalg import sqrtm
 
 from dataloading import load_data, MiraBest_full
-from utilities import y_collapsed
+from utilities import y_collapsed, add_noise
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -88,12 +88,12 @@ def fid(I, X_gen, X_real):
     fid = Dmu + np.trace((sigma_gen + sigma_real - 2*S), axis1=0, axis2=1)
     return fid
 
-def test_prob(D, testLoader, n_test):
+def test_prob(D, testLoader, n_test, bool_val, noise_scale, epoch, n_epochs):
     """ Evaluate the discriminator output for held out real samples (to detect overfitting) """
     D_sum = 0.
     for data in testLoader:
         X, _  = data
-        X = X.cuda()
+        X = add_noise(bool_val, X, noise_scale, epoch, n_epochs).cuda()
         D_X = D(X)[0].view(-1)
         D_sum += torch.sum(D_X).item()
     D_avg = D_sum/n_test

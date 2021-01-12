@@ -54,6 +54,7 @@ batch_size = 32
 batch_size_test = 1000
 n_z = 32
 n_epochs = 100
+n_cycles = 30
 gamma = 1  # weighting for style (L_llike) in generator loss function
 # smoothing parameters
 smoothing = False
@@ -91,7 +92,7 @@ for epoch in range(n_epochs):
 	L_E_cum, L_G_cum, L_D_cum  = 0, 0, 0
 	y_recon, y_gen = 0, 0
 	p_flip = p_flip_ann(epoch, n_epochs)
-	for j in np.arange(50):
+	for j in np.arange(n_cycles):
 		for i, data in enumerate(trainLoader , 0):
 			X, _ = data
 			samples += X.size()[0]
@@ -209,13 +210,13 @@ for epoch in range(n_epochs):
 			L_D_cum += L_D.item()
 
 			iterations = i
-
+.
 	## insert cumulative losses into dictionary ##
-	L_dict['L_E'][epoch] = L_E_cum/iterations
-	L_dict['L_G'][epoch] = L_G_cum/iterations
-	L_dict['L_D'][epoch] = L_D_cum/iterations
-	L_dict['y_gen'][epoch] = y_gen/iterations
-	L_dict['y_recon'][epoch] = y_recon/iterations
+	L_dict['L_E'][epoch] = L_E_cum/(iterations*n_cycles)
+	L_dict['L_G'][epoch] = L_G_cum/(iterations*n_cycles)
+	L_dict['L_D'][epoch] = L_D_cum/(iterations*n_cycles)
+	L_dict['y_gen'][epoch] = y_gen/(iterations*n_cycles)
+	L_dict['y_recon'][epoch] = y_recon/(iterations*n_cycles)
 
 	if epoch % 10 == 0:
 		torch.save(E, CHECKPOINT_PATH + '/E_{:f}.pt'.format(epoch))
@@ -254,7 +255,7 @@ for epoch in range(n_epochs):
 		eval_dict['n_samples'][epoch] = samples
 		eval_dict['inception'][epoch] = IS
 		eval_dict['fid'][epoch] = FID
-		eval_dict['D_X_test'][epoch] = test_prob(D, testLoader, n_test)
+		eval_dict['D_X_test'][epoch] = test_prob(D, testLoader, n_test, noise, noise_scale, epoch, n_epochs)
 		
 		
 		plot_eval_dict(eval_dict, epoch)
