@@ -78,8 +78,7 @@ eval_dict = {'x_plot': np.arange(n_epochs), 'n_samples': np.zeros(n_epochs), 'in
 			 'likeness': np.zeros(n_epochs), 'D_X_test':np.zeros(n_epochs)}
 
 # load inception model
-I = torch.load(EVAL_PATH + '/I.pt')
-I = I.cuda()
+I = torch.load(EVAL_PATH + '/I.pt').cuda()
 # load full datasets for plotting latent space #
 X_full, y_full = dset_array()
 y_full = y_collapsed(y_full)
@@ -250,7 +249,7 @@ for epoch in range(n_epochs):
 
 
 		IS = inception_score(I, X_fake)
-		FID = fid(I, X_fake, X_full)
+		FID = fid(I, X_fake, X_full.cuda())
 		eval_dict['n_samples'][epoch] = samples
 		eval_dict['inception'][epoch] = IS
 		eval_dict['fid'][epoch] = FID
