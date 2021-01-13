@@ -123,7 +123,7 @@ def plot_eval_dict(eval_dict, epoch):
     ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
     ax.set_xlabel('epoch')
     ax.legend()
-    #ax.set_ylim(0,5000)
+    ax.set_ylim(0,150)
     fig.savefig(EVAL_PATH + '/frechet_distance.pdf')
     plt.close(fig)
 
@@ -133,7 +133,7 @@ def plot_eval_dict(eval_dict, epoch):
     ax.plot(x_plot[:epoch], D_X_test[:epoch], label='D(X_test)')
     ax.set_xlabel('epoch')
     ax.legend()
-    #ax.set_ylim(0,1)
+    ax.set_ylim(0,1)
     fig.savefig(EVAL_PATH + '/overfitting_score.pdf')
     plt.close(fig)
 
