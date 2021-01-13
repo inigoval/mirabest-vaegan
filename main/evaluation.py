@@ -128,6 +128,7 @@ def plot_eval_dict(eval_dict, epoch):
     plt.close(fig)
 
     ## plot frechet inception distance ##
+    fig, ax = plt.subplots(1,1)
     ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
     ax.set_xlabel('epoch')
     ax.legend()
@@ -136,6 +137,7 @@ def plot_eval_dict(eval_dict, epoch):
     plt.close(fig)
 
     ## plot frechet inception distance ##
+    fig, ax = plt.subplots(1,1)
     ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
     ax.set_xlabel('epoch')
     ax.legend()
@@ -153,6 +155,7 @@ def plot_eval_dict(eval_dict, epoch):
     plt.close(fig)
 
     ## plot overfitting score, 1 is no overfitting 0 is completely overfitted ##
+    fig, ax = plt.subplots(1,1)
     ax.plot(x_plot[:epoch], D_X_test[:epoch], label='D(X_test)')
     ax.set_xlabel('epoch')
     ax.legend()
@@ -161,6 +164,7 @@ def plot_eval_dict(eval_dict, epoch):
     plt.close(fig)
 
     ## plot fri% to assess bias of generator ##
+    fig, ax = plt.subplots(1,1)
     ax.plot(x_plot[:epoch], R[:epoch], label='fri%')
     ax.set_xlabel('epoch')
     ax.legend()
