@@ -62,7 +62,6 @@ def inception_score(I, X, eps = 1E-10):
     # normalise X for CNN evaluation
     #X = renormalize(X)
     p_yx = I(X)
-    print(p_y.size())
     p_y = torch.mean(p_yx, 1)
     print(p_y)
     assert p_y.size()[0] == 2
