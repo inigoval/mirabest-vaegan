@@ -132,7 +132,7 @@ def plot_eval_dict(eval_dict, epoch):
     ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
     ax.set_xlabel('epoch')
     ax.legend()
-    ax.set_ylim(0,150)
+    ax.set_ylim(0,400)
     fig.savefig(EVAL_PATH + '/frechet_distance.pdf')
     plt.close(fig)
 
