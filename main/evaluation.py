@@ -63,7 +63,7 @@ def inception_score(I, X, eps = 1E-10):
     #X = renormalize(X)
     p_yx = I(X)
     p_y = torch.mean(p_yx, 0).view(1, -1)
-    p_y = p_y.repeat(X.size()[0], 2)
+    p_y = p_y.repeat(X.size()[0], 0)
     print(p_y.size())
     print(p_y)
     KL = torch.mean(p_yx * (torch.log(p_yx + eps) - torch.log(p_y + eps))).detach().cpu().numpy()
