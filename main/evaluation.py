@@ -60,7 +60,7 @@ def generate(G, n_z, n_samples=1000):
 
 def inception_score(I, X, eps = 1E-10):
     # normalise X for CNN evaluation
-    X = renormalize(X)
+    #X = renormalize(X)
     p_yx = I(X)
     p_y = torch.mean(p_yx, 0)
     KL = torch.mean(p_yx * (torch.log(p_yx + eps) - torch.log(p_y + eps))).detach().cpu().numpy()
@@ -126,8 +126,6 @@ def plot_eval_dict(eval_dict, epoch):
     fig.savefig(EVAL_PATH + '/inception_score.pdf')
     plt.close(fig)
 
-    fig, ax = plt.subplots(1,1)
-
     ## plot frechet inception distance ##
     ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
     ax.set_xlabel('epoch')
@@ -136,7 +134,22 @@ def plot_eval_dict(eval_dict, epoch):
     fig.savefig(EVAL_PATH + '/frechet_distance.pdf')
     plt.close(fig)
 
+    ## plot frechet inception distance ##
+    ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
+    ax.set_xlabel('epoch')
+    ax.legend()
+    ax.set_ylim(0,150)
+    fig.savefig(EVAL_PATH + '/frechet_distance-zoomed.pdf')
+    plt.close(fig)
+
+    ## plot frechet inception distance ##
     fig, ax = plt.subplots(1,1)
+    ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
+    ax.set_xlabel('epoch')
+    ax.legend()
+    ax.set_ylim(0,50)
+    fig.savefig(EVAL_PATH + '/frechet_distance-extra-zoomed.pdf')
+    plt.close(fig)
 
     ## plot overfitting score, 1 is no overfitting 0 is completely overfitted ##
     ax.plot(x_plot[:epoch], D_X_test[:epoch], label='D(X_test)')
@@ -146,7 +159,6 @@ def plot_eval_dict(eval_dict, epoch):
     fig.savefig(EVAL_PATH + '/overfitting_score.pdf')
     plt.close(fig)
 
-
     ## plot fri% to assess bias of generator ##
     ax.plot(x_plot[:epoch], R[:epoch], label='fri%')
     ax.set_xlabel('epoch')
@@ -154,7 +166,6 @@ def plot_eval_dict(eval_dict, epoch):
     ax.set_ylim(0,100)
     fig.savefig(EVAL_PATH + '/fri%.pdf')
     plt.close(fig)
-
 
 def plot_z_real(X, y, E, epoch, n_z):
     with torch.no_grad():

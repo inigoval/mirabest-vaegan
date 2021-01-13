@@ -222,7 +222,7 @@ for epoch in range(n_epochs):
 		torch.save(E, CHECKPOINT_PATH + '/E_{:f}.pt'.format(epoch))
 		torch.save(G, CHECKPOINT_PATH + '/G_{:f}.pt'.format(epoch))
 		torch.save(D, CHECKPOINT_PATH + '/D_{:f}.pt'.format(epoch))
-		torch.save(L_dict, CHECKPOINT_PATH + '/L_dict.pt')
+		torch.save(L_dict, EVAL_PATH + '/L_dict.pt')
 
 	with torch.no_grad():
 		## plot and save losses/images ##
