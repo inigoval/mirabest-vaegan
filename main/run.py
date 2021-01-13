@@ -11,7 +11,7 @@ from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
 from utilities import plot_images, KL_loss, sparsity_loss, plot_grid, y_collapsed
 from dataloading import load_data
 from evaluation import dset_array, plot_z_fake, plot_z_real, generate, inception_score
-from evaluation import fid, plot_eval_dict, plot_z, test_prob
+from evaluation import fid, plot_eval_dict, plot_z, test_prob, ratio
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -76,7 +76,7 @@ L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': to
 		  'L_D': torch.zeros(n_epochs), 'y_gen': torch.zeros(n_epochs), 'y_recon': torch.zeros(n_epochs)}
 
 eval_dict = {'x_plot': np.arange(n_epochs), 'n_samples': np.zeros(n_epochs), 'inception': np.zeros(n_epochs), 'fid': np.zeros(n_epochs), 
-			 'likeness': np.zeros(n_epochs), 'D_X_test':np.zeros(n_epochs)}
+			 'likeness': np.zeros(n_epochs), 'D_X_test':np.zeros(n_epochs), 'fri%':np.zeros(n_epochs)}
 
 # load inception model
 I = torch.load(EVAL_PATH + '/I.pt').cuda()
@@ -256,7 +256,7 @@ for epoch in range(n_epochs):
 		eval_dict['inception'][epoch] = IS
 		eval_dict['fid'][epoch] = FID
 		eval_dict['D_X_test'][epoch] = test_prob(D, testLoader, n_test, noise, noise_scale, epoch, n_epochs)
-		
+		eval_dict['fri%'][epoch] = ratio(X_fake, I)
 		
 		plot_eval_dict(eval_dict, epoch)
 

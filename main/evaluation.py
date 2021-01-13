@@ -99,6 +99,15 @@ def test_prob(D, testLoader, n_test, bool_val, noise_scale, epoch, n_epochs):
     D_avg = D_sum/n_test
     return D_avg
 
+def ratio(X, I):
+    y = I(X)
+    _, y_pred = torch.max(y,1)
+    n = y_pred.size()[0]
+    n_fri, n_frii = (y_pred == 0).sum().item(), (y_pred == 1).sum().item()
+    assert n_fri + n_frii == n
+    R = n_fri/n
+    return R*100
+
 def class_idx(y):
     fri_idx = np.argwhere(y == 0)
     frii_idx = np.argwhere(y==1)
@@ -108,7 +117,7 @@ def class_idx(y):
 def plot_eval_dict(eval_dict, epoch):
     fig, ax = plt.subplots(1,1)
     x_plot = eval_dict['x_plot']
-    IS, FID, D_X_test = eval_dict['inception'], eval_dict['fid'], eval_dict['D_X_test']
+    IS, FID, D_X_test, R = eval_dict['inception'], eval_dict['fid'], eval_dict['D_X_test'], eval_dict['fri%']
 
     ## plot inception score ##
     ax.plot(x_plot[:epoch], IS[:epoch], label='inception score')
@@ -136,6 +145,16 @@ def plot_eval_dict(eval_dict, epoch):
     ax.set_ylim(0,1)
     fig.savefig(EVAL_PATH + '/overfitting_score.pdf')
     plt.close(fig)
+
+
+    ## plot fri% to assess bias of generator ##
+    ax.plot(x_plot[:epoch], R[:epoch], label='fri%')
+    ax.set_xlabel('epoch')
+    ax.legend()
+    ax.set_ylim(0,100)
+    fig.savefig(EVAL_PATH + '/fri%.pdf')
+    plt.close(fig)
+
 
 def plot_z_real(X, y, E, epoch, n_z):
     with torch.no_grad():
