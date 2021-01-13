@@ -67,7 +67,7 @@ def inception_score(I, X, eps = 1E-10):
     print(p_y)
     assert p_y.size()[0] == 2
     p_y = p_y.repeat(X.size()[0])
-    print(p_y_
+    print(p_y)
     KL = torch.mean(p_yx * (torch.log(p_yx + eps) - torch.log(p_y + eps))).detach().cpu().numpy()
     # squeeze inception score between 0 and 1
     #IS = KL/3
