@@ -17,13 +17,15 @@ n_df = 16
 n_channels = 1
 batch_size = 32
 
+
 class enc(nn.Module):
     # Conv2D(in_channels, out_channels, kernel size, stride, padding)
     # conv1 (1, 150, 150)  ->  (16, 75, 75)
     # conv2 (16, 75, 75)   ->  (32, 36, 36)
     # conv3 (32, 36, 36)   ->  (64, 18, 18)
     # conv4 (64, 16, 16)   ->  (128, 8, 8)
-    # fc    (128*8*8)       ->  (n_z)
+    # conv5 (128, 8, 8)    ->  (256, 4, 4)
+    # fc    (256*4*4)       ->  (n_z)
     def __init__(self):
         super(enc, self).__init__()
         self.conv1 = nn.Sequential(
@@ -46,8 +48,13 @@ class enc(nn.Module):
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2, inplace=True))
 
-        self.mu = nn.Linear(128*8*8, n_z, bias= False)
-        self.logvar = nn.Linear(128*8*8, n_z, bias= False)
+        self.conv5 = nn.Sequential(
+            nn.Conv2d(128, 256, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2, inplace=True))
+
+        self.mu = nn.Linear(256*4*4, n_z, bias=False)
+        self.logvar = nn.Linear(256*4*4, n_z, bias=False)
 
     def forward(self, x):
         # calculating the logvariance ensurees that the std is positive
@@ -60,6 +67,7 @@ class enc(nn.Module):
         logvar = self.logvar(x).view(-1, n_z, 1, 1)
         return mu, logvar
 
+
 class dec(nn.Module):
     # conv1 (100, 1, 1)   ->  (128, 8,  8)
     # conv2 (128, 8, 8)   ->  (64, 4, 4)
@@ -69,17 +77,17 @@ class dec(nn.Module):
     def __init__(self):
         super(dec, self).__init__()
         self.conv1 = nn.Sequential(
-            nn.ConvTranspose2d(n_z, n_gf*8, 7, 1, 0, bias = False),
+            nn.ConvTranspose2d(n_z, n_gf*8, 7, 1, 0, bias=False),
             nn.BatchNorm2d(n_gf*8),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv2 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf*8, n_gf*4, 6, 2, 1, bias =False),
+            nn.ConvTranspose2d(n_gf*8, n_gf*4, 6, 2, 1, bias=False),
             nn.BatchNorm2d(n_gf*4),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv3 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf*4, n_gf*2, 6, 2, 1, bias =False),
+            nn.ConvTranspose2d(n_gf*4, n_gf*2, 6, 2, 1, bias=False),
             nn.BatchNorm2d(n_gf*2),
             nn.LeakyReLU(0.2, inplace=True))
 
@@ -97,8 +105,9 @@ class dec(nn.Module):
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
-        x = self.conv5(x).view(-1, 1, 150,150)
+        x = self.conv5(x).view(-1, 1, 150, 150)
         return x
+
 
 class disc(nn.Module):
     def __init__(self):
@@ -110,7 +119,6 @@ class disc(nn.Module):
         # conv3 (32, 34, 34)    ->  (64, 18, 18)
         # conv4 (64, 4, 4)    ->  (128, 8, 8)
         # conv5 (128, 8, 8)    ->  (1, 1, 1)
-
 
         self.conv1 = nn.Sequential(
             nn.Conv2d(1, n_df, 14, 2, 1, bias=False),
@@ -144,6 +152,7 @@ class disc(nn.Module):
         y_pred = self.conv5(x).view(-1)
         return y_pred, D_l
 
+
 class I(nn.Module):
     def __init__(self):
         super(I, self).__init__()
@@ -154,7 +163,6 @@ class I(nn.Module):
         # conv3 (64, 4, 4)     ->  (128, 18, 18)
         # conv4 (128, 4, 4)    ->  (256, 8, 8)
         # conv5 (256, 8, 8)    ->  (3, 1, 1)
-
 
         self.conv1 = nn.Sequential(
             nn.Conv2d(1, 6, 11, 1, 1),
@@ -199,7 +207,7 @@ class I(nn.Module):
             nn.Linear(256, 256),
             nn.ReLU(),
             nn.Dropout())
-        
+
         self.linear2 = nn.Sequential(
             nn.Linear(256, 2),
             nn.Softmax(dim=1))
