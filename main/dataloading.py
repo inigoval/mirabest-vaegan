@@ -241,7 +241,19 @@ class Circle_Crop(torch.nn.Module):
         return img
 
 
-def load_data(batch_size, label=1):
+def subset(dset, fraction, seed=69):
+    """
+    Helper function, creates a subset of 'dset' containing a random 'fraction' of original samples
+    """
+    np.random.seed(69)
+    length = len(dset)
+    idx = np.arange(length)
+    subset_idx = np.random.choice(idx, size=int(fraction*length))
+    subset = torch.utils.data.Subset(dset, subset_idx)
+    return subset
+
+
+def load_data(batch_size, label=1, subset=False, fraction=0.5):
     #    transform = torchvision.transforms.Compose([
     #        T.RandomVerticalFlip(p=0.21),
     #        T.RandomHorizontalFlip(p=0.21),
@@ -250,7 +262,12 @@ def load_data(batch_size, label=1):
     #        T.Normalize(mean=[0], std=[1])
     #    ])
 
-    transform = torchvisiion.transforms.Compose([
+    # set random seed for reproducible results
+    torch.backends.cudnn.deterministic = True
+    torch.manual_seed(69)
+    torch.cuda.manual_seed(69)
+
+    transform = torchvision.transforms.Compose([
         T.RandomRotation(180),
         T.ToTensor(),
         Circle_Crop()
@@ -259,6 +276,11 @@ def load_data(batch_size, label=1):
     train_data = MB_nohybrids(DATA_PATH, train=True, transform=transform, download=True)
     test_data = MB_nohybrids(DATA_PATH, train=False, transform=transform, download=True)
 
+    if subset:
+        train_data = subset(train_data, fraction)
+        test_data = subset(test_data, fraction)
+
+    # get label indices
     idx_train = train_data.train_labels == label
     train_data.train_labels = train_data.train_labels[idx_train]
     train_data.train_labels = train_data.train_labels[idx_test]
@@ -272,4 +294,5 @@ def load_data(batch_size, label=1):
     # trainLoader = torch.utils.data.DataLoader(all_data, batch_size=batch_size, shuffle=True)
     trainLoader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
     testLoader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=True)
+
     return trainLoader, testLoader, n_test

@@ -55,7 +55,7 @@ batch_size_test = 1000
 n_z = 32
 n_epochs = 400
 n_cycles = 10
-gamma = 0.3  # weighting for style (L_llike) in generator loss function
+gamma = 1  # weighting for style (L_llike) in generator loss function
 # smoothing parameters
 smoothing = False
 smoothing_scale = 0.12
