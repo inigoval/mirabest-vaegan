@@ -14,6 +14,7 @@ import torch
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(FILE_PATH, 'data')
 
+
 class MiraBest_full(data.Dataset):
     """​
     Inspired by `HTRU1 <https://as595.github.io/HTRU1/>`_ Dataset.
@@ -36,23 +37,23 @@ class MiraBest_full(data.Dataset):
     filename = "MiraBest_full_batches.tar.gz"
     tgz_md5 = '965b5daa83b9d8622bb407d718eecb51'
     train_list = [
-                    ['data_batch_1', 'b15ae155301f316fc0b51af16b3c540d'],
-                    ['data_batch_2', '0bf52cc1b47da591ed64127bab6df49e'],
-                    ['data_batch_3', '98908045de6695c7b586d0bd90d78893'],
-                    ['data_batch_4', 'ec9b9b77dc019710faf1ad23f1a58a60'],
-                    ['data_batch_5', '5190632a50830e5ec30de2973cc6b2e1'],
-                    ['data_batch_6', 'b7113d89ddd33dd179bf64cb578be78e'],
-                    ['data_batch_7', '626c866b7610bfd08ac94ca3a17d02a1'],
-                    ]
+        ['data_batch_1', 'b15ae155301f316fc0b51af16b3c540d'],
+        ['data_batch_2', '0bf52cc1b47da591ed64127bab6df49e'],
+        ['data_batch_3', '98908045de6695c7b586d0bd90d78893'],
+        ['data_batch_4', 'ec9b9b77dc019710faf1ad23f1a58a60'],
+        ['data_batch_5', '5190632a50830e5ec30de2973cc6b2e1'],
+        ['data_batch_6', 'b7113d89ddd33dd179bf64cb578be78e'],
+        ['data_batch_7', '626c866b7610bfd08ac94ca3a17d02a1'],
+    ]
 
     test_list = [
-                    ['test_batch', '5e443302dbdf3c2003d68ff9ac95f08c'],
-                    ]
+        ['test_batch', '5e443302dbdf3c2003d68ff9ac95f08c'],
+    ]
     meta = {
-                'filename': 'batches.meta',
-                'key': 'label_names',
-                'md5': 'e1b5450577209e583bc43fbf8e851965',
-                }
+        'filename': 'batches.meta',
+        'key': 'label_names',
+        'md5': 'e1b5450577209e583bc43fbf8e851965',
+    }
 
     def __init__(self, root, train=True,
                  transform=None, target_transform=None,
@@ -124,8 +125,8 @@ class MiraBest_full(data.Dataset):
 
         # doing this so that it is consistent with all other datasets
         # to return a PIL Image
-        img = np.reshape(img,(150,150))
-        img = Image.fromarray(img,mode='L')
+        img = np.reshape(img, (150, 150))
+        img = Image.fromarray(img, mode='L')
 
         if self.transform is not None:
             img = self.transform(img)
@@ -172,16 +173,18 @@ class MiraBest_full(data.Dataset):
         fmt_str += '{0}{1}'.format(tmp, self.target_transform.__repr__().replace('\n', '\n' + ' ' * len(tmp)))
         return fmt_str
 
+
 class MB_nohybrids(MiraBest_full):
     """
     Child class to load only frii/frii samples
     """
+
     def __init__(self, *args, **kwargs):
         super(MB_nohybrids, self).__init__(*args, **kwargs)
 
-        fr1_list = [0,1,2,3,4]
-        fr2_list = [5,6,7]
-        exclude_list = [8,9]
+        fr1_list = [0, 1, 2, 3, 4]
+        fr2_list = [5, 6, 7]
+        exclude_list = [8, 9]
 
         if exclude_list == []:
             return
@@ -193,8 +196,8 @@ class MB_nohybrids(MiraBest_full):
             fr2 = np.array(fr2_list).reshape(1, -1)
             fr1_mask = (targets.reshape(-1, 1) == fr1).any(axis=1)
             fr2_mask = (targets.reshape(-1, 1) == fr2).any(axis=1)
-            targets[fr1_mask] = 0 # set all FRI to Class~0
-            targets[fr2_mask] = 1 # set all FRII to Class~1
+            targets[fr1_mask] = 0  # set all FRI to Class~0
+            targets[fr2_mask] = 1  # set all FRII to Class~1
             self.data = self.data[exclude_mask]
             self.targets = targets[exclude_mask].tolist()
         else:
@@ -205,21 +208,65 @@ class MB_nohybrids(MiraBest_full):
             fr2 = np.array(fr2_list).reshape(1, -1)
             fr1_mask = (targets.reshape(-1, 1) == fr1).any(axis=1)
             fr2_mask = (targets.reshape(-1, 1) == fr2).any(axis=1)
-            targets[fr1_mask] = 0 # set all FRI to Class 0
-            targets[fr2_mask] = 1 # set all FRII to Class 1
+            targets[fr1_mask] = 0  # set all FRI to Class 0
+            targets[fr2_mask] = 1  # set all FRII to Class 1
             self.data = self.data[exclude_mask]
             self.targets = targets[exclude_mask].tolist()
 
-def load_data(batch_size):
-    transform = torchvision.transforms.Compose([
-    T.RandomVerticalFlip(p=0.21),
-    T.RandomHorizontalFlip(p=0.21),
-    T.RandomApply((T.RandomRotation(180),), p=0.21),
-    T.ToTensor(),
-    T.Normalize(mean=[0], std=[1])
+
+class Circle_Crop(torch.nn.Module):
+    """
+    Set all values outside largest possible circle that fits inside image to 0
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, img):
+        """
+        """
+        H, W = img.shape[-1], img.shape[-2]
+        assert H == W
+        x = torch.arange(W).repeat(H, 1)
+        x = (x-74.5)/74.5
+        y = torch.transpose(x, 0, 1)
+        r = torch.sqrt(torch.square(x) + torch.square(y))
+        r = r/torch.max(r)
+        r[r < 0.5] = -1
+        r[r == 0.5] = -1
+        r[r != -1] = 0
+        r = torch.square(r)
+        assert r.shape == img.shape
+        img = torch.mul(r, img)
+        return img
+
+
+def load_data(batch_size, label=1):
+    #    transform = torchvision.transforms.Compose([
+    #        T.RandomVerticalFlip(p=0.21),
+    #        T.RandomHorizontalFlip(p=0.21),
+    #        T.RandomApply((T.RandomRotation(180),), p=0.21),
+    #        T.ToTensor(),
+    #        T.Normalize(mean=[0], std=[1])
+    #    ])
+
+    transform = torchvisiion.transforms.Compose([
+        T.RandomRotation(180),
+        T.ToTensor(),
+        Circle_Crop()
     ])
+
     train_data = MB_nohybrids(DATA_PATH, train=True, transform=transform, download=True)
     test_data = MB_nohybrids(DATA_PATH, train=False, transform=transform, download=True)
+
+    idx_train = train_data.train_labels == label
+    train_data.train_labels = train_data.train_labels[idx_train]
+    train_data.train_labels = train_data.train_labels[idx_test]
+
+    idx_test = test_data.train_labels == label
+    test_data.train_labels = test_data.train_labels[idx_train]
+    test_data.train_labels = test_data.train_labels[idx_test]
+
     n_test = len(test_data)
     # all_data = torch.utils.data.ConcatDataset((train_data, test_data))
     # trainLoader = torch.utils.data.DataLoader(all_data, batch_size=batch_size, shuffle=True)
