@@ -282,12 +282,12 @@ def load_data(batch_size, label=1, subset=False, fraction=0.5):
 
     # get label indices
     idx_train = train_data.train_labels == label
-    train_data.train_labels = train_data.train_labels[idx_train]
-    train_data.train_labels = train_data.train_labels[idx_test]
+    train_data.targets = train_data.targets[idx_train]
+    train_data.data = train_data.data[idx_test]
 
     idx_test = test_data.train_labels == label
-    test_data.train_labels = test_data.train_labels[idx_train]
-    test_data.train_labels = test_data.train_labels[idx_test]
+    test_data.targets = test_data.targets[idx_train]
+    test_data.data = test_data.data[idx_test]
 
     n_test = len(test_data)
     # all_data = torch.utils.data.ConcatDataset((train_data, test_data))
