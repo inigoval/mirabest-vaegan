@@ -123,14 +123,7 @@ def class_idx(y):
 def plot_eval_dict(eval_dict, epoch):
     fig, ax = plt.subplots(1, 1)
     x_plot = eval_dict['x_plot']
-    IS, FID, D_X_test, R = eval_dict['inception'], eval_dict['fid'], eval_dict['D_X_test'], eval_dict['fri%']
-
-    ## plot inception score ##
-    ax.plot(x_plot[:epoch], IS[:epoch], label='inception score')
-    ax.set_xlabel('epoch')
-    ax.legend()
-    fig.savefig(EVAL_PATH + '/inception_score.pdf')
-    plt.close(fig)
+    FID, D_X_test, R = eval_dict['fid'], eval_dict['D_X_test'], eval_dict['fri%']
 
     ## plot frechet inception distance ##
     fig, ax = plt.subplots(1, 1)
