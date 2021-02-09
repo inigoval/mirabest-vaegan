@@ -8,7 +8,7 @@ import os
 
 from networks import enc, dec, disc, I
 from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
-from utilities import plot_images, KL_loss, sparsity_loss, plot_grid, y_collapsed
+from utilities import plot_images, KL_loss, plot_grid, y_collapsed
 from dataloading import load_data
 from evaluation import plot_z_fake, plot_z_real, generate, inception_score
 from evaluation import fid, plot_eval_dict, plot_z, test_prob, ratio
