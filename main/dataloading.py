@@ -268,7 +268,7 @@ def choose_label(dset, label):
     dset.targets = targets
 
 
-def load_data(batch_size, label=1, reduce=False, fraction=0.5, array=False):
+def load_data(batch_size, label=1, reduce=False, fraction=0.5, array=False, fid_sample_size=10000):
     """
     Load data using Mirabest class
     """
@@ -278,16 +278,11 @@ def load_data(batch_size, label=1, reduce=False, fraction=0.5, array=False):
     torch.manual_seed(69)
     torch.cuda.manual_seed(69)
 
-    if array:
-        transform = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor()
-        ])
-    else:
-        transform = torchvision.transforms.Compose([
-            T.RandomRotation(180),
-            T.ToTensor(),
-            Circle_Crop()
-        ])
+    transform = torchvision.transforms.Compose([
+        T.RandomRotation(180),
+        T.ToTensor(),
+        Circle_Crop()
+    ])
 
     train_data = MB_nohybrids(DATA_PATH, train=True, transform=transform, download=True)
     test_data = MB_nohybrids(DATA_PATH, train=False, transform=transform, download=True)
@@ -301,11 +296,22 @@ def load_data(batch_size, label=1, reduce=False, fraction=0.5, array=False):
         train_data = subset(train_data, fraction)
         # test_data = subset(test_data, fraction)
 
-   # Load the full dataset as tensors
+   # Load the full augmented dataset for FID evaluation
     if array:
         all_data = torch.utils.data.ConcatDataset((train_data, test_data))
         loader = torch.utils.data.DataLoader(all_data, batch_size=len(all_data), shuffle=True)
-        X, y = next(iter(loader))
+        # Complete enough cycles to have the right amount of samples
+        n_cycles = int(fid_sample_size/len(all_data))
+        for i in np.arange(n_cycles):
+            for data in loader:
+                X, y = data
+            if i == 0:
+                X_full = X
+                y_full = y
+            else:
+                X_full = torch.cat((X_full, X), 0)
+                y_full = torch.cat((y_full, y), 0)
+
         return X.cpu(), y.cpu()
 
     # Load the dataset as iterable data-loaders
