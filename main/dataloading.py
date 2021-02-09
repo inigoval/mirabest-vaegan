@@ -224,18 +224,19 @@ class Circle_Crop(torch.nn.Module):
 
     def forward(self, img):
         """
+        !!! Support for multiple channels not implemented yet !!!
         """
-        H, W = img.shape[-1], img.shape[-2]
+        H, W, C = img.shape[-1], img.shape[-2], img.shape[-3]
         assert H == W
-        x = torch.arange(W).repeat(H, 1)
+        x = torch.arange(W, dtype=torch.float).repeat(H, 1)
         x = (x-74.5)/74.5
         y = torch.transpose(x, 0, 1)
-        r = torch.sqrt(torch.square(x) + torch.square(y))
+        r = torch.sqrt(torch.pow(x, 2) + torch.pow(y, 2))
         r = r/torch.max(r)
         r[r < 0.5] = -1
         r[r == 0.5] = -1
         r[r != -1] = 0
-        r = torch.square(r)
+        r = torch.pow(r, 2).view(1, H, W)
         assert r.shape == img.shape
         img = torch.mul(r, img)
         return img
@@ -253,46 +254,65 @@ def subset(dset, fraction, seed=69):
     return subset
 
 
-def load_data(batch_size, label=1, subset=False, fraction=0.5):
-    #    transform = torchvision.transforms.Compose([
-    #        T.RandomVerticalFlip(p=0.21),
-    #        T.RandomHorizontalFlip(p=0.21),
-    #        T.RandomApply((T.RandomRotation(180),), p=0.21),
-    #        T.ToTensor(),
-    #        T.Normalize(mean=[0], std=[1])
-    #    ])
+def choose_label(dset, label):
+    """
+    Reduce input dataset to only contain given label
+    """
+    data_array = dset.data
+    target_list = dset.targets
+    targets = np.asarray(target_list)
+    label_idx = np.argwhere(targets == label)
+    targets = targets[label_idx]
+    data_array = data_array[label_idx]
+    dset.data = data_array
+    dset.targets = targets
+
+
+def load_data(batch_size, label=1, reduce=False, fraction=0.5, array=False):
+    """
+    Load data using Mirabest class
+    """
 
     # set random seed for reproducible results
     torch.backends.cudnn.deterministic = True
     torch.manual_seed(69)
     torch.cuda.manual_seed(69)
 
-    transform = torchvision.transforms.Compose([
-        T.RandomRotation(180),
-        T.ToTensor(),
-        Circle_Crop()
-    ])
+    if array:
+        transform = torchvision.transforms.Compose([
+            torchvision.transforms.ToTensor()
+        ])
+    else:
+        transform = torchvision.transforms.Compose([
+            T.RandomRotation(180),
+            T.ToTensor(),
+            Circle_Crop()
+        ])
 
     train_data = MB_nohybrids(DATA_PATH, train=True, transform=transform, download=True)
     test_data = MB_nohybrids(DATA_PATH, train=False, transform=transform, download=True)
 
-    if subset:
+    # Reduce dataset to only include given labels
+    choose_label(train_data, label)
+    choose_label(test_data, label)
+
+    # Subset the full dataset
+    if reduce:
         train_data = subset(train_data, fraction)
-        test_data = subset(test_data, fraction)
+        # test_data = subset(test_data, fraction)
 
-    # get label indices
-    idx_train = train_data.train_labels == label
-    train_data.targets = train_data.targets[idx_train]
-    train_data.data = train_data.data[idx_test]
+   # Load the full dataset as tensors
+    if array:
+        all_data = torch.utils.data.ConcatDataset((train_data, test_data))
+        loader = torch.utils.data.DataLoader(all_data, batch_size=len(all_data), shuffle=True)
+        X, y = next(iter(loader))
+        return X.cpu(), y.cpu()
 
-    idx_test = test_data.train_labels == label
-    test_data.targets = test_data.targets[idx_train]
-    test_data.data = test_data.data[idx_test]
+    # Load the dataset as iterable data-loaders
+    else:
+        n_test = len(test_data)
 
-    n_test = len(test_data)
-    # all_data = torch.utils.data.ConcatDataset((train_data, test_data))
-    # trainLoader = torch.utils.data.DataLoader(all_data, batch_size=batch_size, shuffle=True)
-    trainLoader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    testLoader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=True)
+        trainLoader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
+        testLoader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=True)
 
-    return trainLoader, testLoader, n_test
+        return trainLoader, testLoader, n_test

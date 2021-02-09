@@ -10,7 +10,7 @@ from networks import enc, dec, disc, I
 from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
 from utilities import plot_images, KL_loss, sparsity_loss, plot_grid, y_collapsed
 from dataloading import load_data
-from evaluation import dset_array, plot_z_fake, plot_z_real, generate, inception_score
+from evaluation import plot_z_fake, plot_z_real, generate, inception_score
 from evaluation import fid, plot_eval_dict, plot_z, test_prob, ratio
 
 # define paths for saving
@@ -55,7 +55,7 @@ batch_size_test = 1000
 n_z = 32
 n_epochs = 400
 n_cycles = 10
-gamma = 1  # weighting for style (L_llike) in generator loss function
+gamma = 0.5  # weighting for style (L_llike) in generator loss function
 # smoothing parameters
 smoothing = False
 smoothing_scale = 0.12
@@ -71,7 +71,7 @@ n_images = 6
 label = 0
 
 ## load and normalise data ##
-trainLoader, testLoader, n_test = load_data(batch_size, label)
+trainLoader, testLoader, n_test = load_data(batch_size, label=label, reduce=True)
 
 # assign dictionary to hold plotting values
 L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': torch.zeros(n_epochs),
@@ -83,8 +83,7 @@ eval_dict = {'x_plot': np.arange(n_epochs), 'n_samples': np.zeros(n_epochs), 'in
 # load inception model
 I = torch.load(EVAL_PATH + '/I.pt').cuda()
 # load full datasets for plotting latent space #
-X_full, y_full = dset_array()
-y_full = y_collapsed(y_full)
+X_full, y_full = load_data(batch_size, label=label, reduce=True, array=True)
 
 # initialise noise for grid images so that latent vector is same every time
 Z_plot = Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)

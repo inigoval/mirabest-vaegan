@@ -50,7 +50,7 @@ class enc(nn.Module):
 
         self.conv5 = nn.Sequential(
             nn.Conv2d(128, 256, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(128),
+            nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.mu = nn.Linear(256*4*4, n_z, bias=False)
@@ -62,7 +62,8 @@ class enc(nn.Module):
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
-        x = self.conv4(x).view(-1, 128*8*8)
+        x = self.conv4(x)
+        x = self.conv5(x).view(-1, 256*4*4)
         mu = self.mu(x).view(-1, n_z, 1, 1)
         logvar = self.logvar(x).view(-1, n_z, 1, 1)
         return mu, logvar
