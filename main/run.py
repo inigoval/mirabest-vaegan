@@ -8,7 +8,7 @@ import os
 
 from networks import enc, dec, disc, I
 from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
-from utilities import plot_images, KL_loss, plot_grid, y_collapsed
+from utilities import plot_images, KL_loss, plot_grid, y_collapsed, eps_noise
 from dataloading import load_data
 from evaluation import plot_z_fake, plot_z_real, generate, inception_score
 from evaluation import fid, plot_eval_dict, plot_z, test_prob, ratio, compute_mu_sig
@@ -52,8 +52,8 @@ BCE_loss = nn.BCELoss(reduction='mean')
 ## initialise parameters ##
 batch_size = 32
 n_z = 32
-n_epochs = 1000
-n_cycles = 1
+n_epochs = 800
+n_cycles = 5
 gamma = 1  # weighting for style (L_llike) in generator loss function
 # smoothing parameters
 smoothing = False
@@ -62,8 +62,8 @@ smoothing_scale = 0.12
 noise = True
 noise_scale = 0.5
 # label flipping
-label_flip = False
-# p_flip = 0.05
+label_flip = True
+p_flip = 0.05
 # image grid plotting
 n_images = 6
 # 0 = fri 1 = frii
@@ -77,7 +77,8 @@ L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': to
           'L_D': torch.zeros(n_epochs), 'y_gen': torch.zeros(n_epochs), 'y_recon': torch.zeros(n_epochs)}
 
 eval_dict = {'x_plot': np.arange(n_epochs), 'n_samples': np.zeros(n_epochs),  'fid': np.zeros(n_epochs),
-             'likeness': np.zeros(n_epochs), 'D_X_test': np.zeros(n_epochs), 'fri%': np.zeros(n_epochs)}
+             'likeness': np.zeros(n_epochs), 'D_X_test': np.zeros(n_epochs), 'fri%': np.zeros(n_epochs),
+             'epsilon': np.zeros(n_epochs)}
 
 # load inception model
 I = torch.load(EVAL_PATH + '/I.pt').cpu()
@@ -93,7 +94,9 @@ samples = 0
 for epoch in range(n_epochs):
     L_E_cum, L_G_cum, L_D_cum = 0, 0, 0
     y_recon, y_gen = 0, 0
-    p_flip = p_flip_ann(epoch, n_epochs)
+    epsilon = eps_noise(epoch, n_epochs)
+    eval_dict['epsilon'][epoch] = epsilon
+    # p_flip = p_flip_ann(epoch, n_epochs)
     for j in np.arange(n_cycles):
         for i, data in enumerate(trainLoader, 0):
             X, _ = data
@@ -118,7 +121,7 @@ for epoch in range(n_epochs):
             D_opt.zero_grad()
 
             ## train with all real batch ##
-            y_X = D(add_noise(noise, X, noise_scale, epoch, n_epochs))[0]
+            y_X = D(add_noise(noise, X, noise_scale, epsilon))[0]
             y_X = y_X.view(-1)
             L_D_X = BCE_loss(y_X, ones)
             L_D_X.backward()
@@ -128,7 +131,7 @@ for epoch in range(n_epochs):
             mu, logvar = E(X.detach())
             X_tilde = G(z_sample(mu.detach(), logvar.detach()))
             # pass through discriminator -> backprop loss
-            y_X_tilde = D(add_noise(noise, X_tilde, noise_scale, epoch, n_epochs).detach())[0].view(-1)
+            y_X_tilde = D(add_noise(noise, X_tilde, noise_scale, epsilon).detach())[0].view(-1)
             L_D_X_tilde = BCE_loss(y_X_tilde, zeros)
             L_D_X_tilde.backward()
 
@@ -137,7 +140,7 @@ for epoch in range(n_epochs):
             Z = torch.randn_like(mu)
             X_p = G(Z)
             # pass through Discriminator -> backprop loss
-            y_X_p = D(add_noise(noise, X_p, noise_scale, epoch, n_epochs).detach())[0].view(-1)
+            y_X_p = D(add_noise(noise, X_p, noise_scale, epsilon).detach())[0].view(-1)
             L_D_X_p = BCE_loss(y_X_p, zeros)
             L_D_X_p.backward()
 
@@ -159,7 +162,7 @@ for epoch in range(n_epochs):
             # ------>>>>  mu, logvar = E(X.detach()) <<< ---------
             X_tilde = G(z_sample(mu.detach(), logvar.detach()))
             # pass through Driminator -> backprop loss
-            y_X_tilde, D_l_X_tilde = D(add_noise(noise, X_tilde, noise_scale, epoch, n_epochs))
+            y_X_tilde, D_l_X_tilde = D(add_noise(noise, X_tilde, noise_scale, epsilon))
             y_X_tilde = y_X_tilde.view(-1)
             L_G_X_tilde = BCE_loss(y_X_tilde, ones)
             L_G_X_tilde.backward(retain_graph=True)
@@ -169,7 +172,7 @@ for epoch in range(n_epochs):
             # sample z from p(z) = N(0,1) -> generate X
             X_p = G(Z)
             # pass through Driminator -> backprop loss
-            y_X_p = D(add_noise(noise, X_p, noise_scale, epoch, n_epochs))[0].view(-1)
+            y_X_p = D(add_noise(noise, X_p, noise_scale, epsilon))[0].view(-1)
             L_G_X_p = BCE_loss(y_X_p, ones)
             L_G_X_p.backward(retain_graph=True)
             y_gen += y_X_p.mean().item()  # average and save output probability
@@ -234,10 +237,8 @@ for epoch in range(n_epochs):
         ## plot and save losses/images ##
         # if epoch % 1 == 0:
         #    plot_losses(L_dict, epoch)
-        # plot_images(X, E, G, n_z, epoch)
 
         ## plot latent space if we're in 2d ##
-        # if n_z == 2 and epoch % 5 == 0:
         #    plot_z(X_full, y_full, E, epoch)
 
         ## plot image grid ##

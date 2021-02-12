@@ -98,7 +98,11 @@ def fid(I, mu_real, sigma_real, X):
 
 
 def test_prob(D, testLoader, n_test, bool_val, noise_scale, epoch, n_epochs):
-    """ Evaluate the discriminator output for held out real samples (to detect overfitting) """
+    """ 
+    Evaluate the discriminator output for held out real samples (to detect overfitting)
+    A value close to 1 means close to no overfitting, a value close to zero implies
+    significant overfitting
+    """
     D_sum = 0.
     for data in testLoader:
         X, _ = data
@@ -127,23 +131,32 @@ def class_idx(y):
 
 
 def plot_eval_dict(eval_dict, epoch):
-    x_plot = eval_dict['x_plot']
+    x_plot = eval_dict['n_samples']
+    epsilon = eval_dict['epsilon']
     FID, D_X_test, R = eval_dict['fid'], eval_dict['D_X_test'], eval_dict['fri%']
 
     ## plot frechet inception distance ##
-    fig, ax = plt.subplots(1, 1)
-    ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
-    ax.set_xlabel('epoch')
-    ax.legend()
-    ax.set_ylim(0, 400)
+    fig, ax1 = plt.subplots()
+    ax1.set_xlabel('epoch')
+    ax1.set_ylabel('FID')
+    ax1.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
+    ax1.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+    ax1.set_ylim(0, 500)
+
+    ax2 = ax1.twinx()
+    color = 'tab:red'
+    ax2.set_ylabel('epsilon', color=color)
+    ax2.plot(x_plot[:epoch], epsilon[:epoch], '--')
+    ax2.tick_params(axis='y', labelcolor=color)
     fig.savefig(EVAL_PATH + '/frechet_distance.pdf')
     plt.close(fig)
 
     ## plot frechet inception distance ##
     fig, ax = plt.subplots(1, 1)
     ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
+    ax.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
     ax.set_xlabel('epoch')
-    ax.legend()
+    ax.set_ylabel('FID')
     ax.set_ylim(0, 150)
     fig.savefig(EVAL_PATH + '/frechet_distance-zoomed.pdf')
     plt.close(fig)
@@ -151,8 +164,9 @@ def plot_eval_dict(eval_dict, epoch):
     ## plot frechet inception distance ##
     fig, ax = plt.subplots(1, 1)
     ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
+    ax.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
     ax.set_xlabel('epoch')
-    ax.legend()
+    ax.set_ylabel('FID')
     ax.set_ylim(0, 50)
     fig.savefig(EVAL_PATH + '/frechet_distance-extra-zoomed.pdf')
     plt.close(fig)
@@ -160,20 +174,24 @@ def plot_eval_dict(eval_dict, epoch):
     ## plot overfitting score, 1 is no overfitting 0 is completely overfitted ##
     fig, ax = plt.subplots(1, 1)
     ax.plot(x_plot[:epoch], D_X_test[:epoch], label='D(X_test)')
+    ax.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
     ax.set_xlabel('epoch')
+    ax.set_ylabel('D(X_test)')
     ax.legend()
     ax.set_ylim(0, 1)
     fig.savefig(EVAL_PATH + '/overfitting_score.pdf')
     plt.close(fig)
 
     ## plot fri% to assess bias of generator ##
-    fig, ax = plt.subplots(1, 1)
+    '''fig, ax = plt.subplots(1, 1)
     ax.plot(x_plot[:epoch], R[:epoch], label='fri%')
+    ax.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
     ax.set_xlabel('epoch')
+    ax.set_ylabel('fri%')
     ax.legend()
     ax.set_ylim(0, 100)
     fig.savefig(EVAL_PATH + '/fri%.pdf')
-    plt.close(fig)
+    plt.close(fig)'''
 
 
 def plot_z_real(X, y, E, epoch, n_z):
