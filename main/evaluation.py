@@ -53,33 +53,39 @@ def renormalize(X, mu=0.0031, std=0.0352):
 
 
 def generate(G, n_z, n_samples=1000):
-    Z = torch.randn((n_samples, n_z)).cuda().view(n_samples, n_z, 1, 1)
+    Z = torch.randn((n_samples, n_z)).view(n_samples, n_z, 1, 1).cuda()
     X = G(Z)
     return X
 
 
 def inception_score(I, X, eps=1E-10):
     # normalise X for CNN evaluation
-    #X = renormalize(X)
+    # X = renormalize(X)
     p_yx = I(X)
     p_y = torch.mean(p_yx, 0).view(1, -1)
     p_y = p_y.expand(X.size()[0], -1)
     KL = torch.mean(p_yx * torch.log(p_yx + eps) - torch.log(p_y + eps)).detach().cpu().numpy()
     # squeeze inception score between 0 and 1
-    #IS = KL/3
+    # IS = KL/3
     IS = np.exp((KL-2))
     return IS
 
 
-def fid(I, X_gen, X_real):
-    # X_gen, X_real = renormalize(X_gen).cpu(), renormalize(X_real).cpu()
-    _ = I(X_gen)
-    f_gen = I.fid_layer.detach().cpu().numpy()
-    _ = I(X_real)
-    f_real = I.fid_layer.detach().cpu().numpy()
-    mu_gen, mu_real = np.mean(f_gen, axis=0), np.mean(f_real, axis=0)
+def compute_mu_sig(I, data):
+    """
+    Compute the FID (hidden) layer mean and covariance for given data
+    """
+    _ = I(data)
+    fid_layer = I.fid_layer.detach().cpu().numpy()
+    mu = np.mean(fid_layer, axis=0)
+    sigma = np.cov(fid_layer, rowvar=False)
+    return mu, sigma
 
-    sigma_gen, sigma_real = np.cov(f_gen, rowvar=False), np.cov(f_real, rowvar=False)
+
+def fid(I, mu_real, sigma_real, X):
+    # X_gen, X_real = renormalize(X_gen).cpu(), renormalize(X_real).cpu()
+    mu_gen, sigma_gen = compute_mu_sig(I, X)
+
     S = sqrtm((np.dot(sigma_gen, sigma_real)))
 
     if np.iscomplexobj(S):
@@ -121,7 +127,6 @@ def class_idx(y):
 
 
 def plot_eval_dict(eval_dict, epoch):
-    fig, ax = plt.subplots(1, 1)
     x_plot = eval_dict['x_plot']
     FID, D_X_test, R = eval_dict['fid'], eval_dict['D_X_test'], eval_dict['fri%']
 

@@ -11,7 +11,7 @@ from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
 from utilities import plot_images, KL_loss, plot_grid, y_collapsed
 from dataloading import load_data
 from evaluation import plot_z_fake, plot_z_real, generate, inception_score
-from evaluation import fid, plot_eval_dict, plot_z, test_prob, ratio
+from evaluation import fid, plot_eval_dict, plot_z, test_prob, ratio, compute_mu_sig
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -51,11 +51,10 @@ BCE_loss = nn.BCELoss(reduction='mean')
 
 ## initialise parameters ##
 batch_size = 32
-batch_size_test = 1000
 n_z = 32
-n_epochs = 400
-n_cycles = 10
-gamma = 0.5  # weighting for style (L_llike) in generator loss function
+n_epochs = 1000
+n_cycles = 1
+gamma = 1  # weighting for style (L_llike) in generator loss function
 # smoothing parameters
 smoothing = False
 smoothing_scale = 0.12
@@ -68,7 +67,7 @@ label_flip = False
 # image grid plotting
 n_images = 6
 # 0 = fri 1 = frii
-label = 0
+label = 1
 
 ## load and normalise data ##
 trainLoader, testLoader, n_test = load_data(batch_size, label=label, reduce=True)
@@ -81,9 +80,11 @@ eval_dict = {'x_plot': np.arange(n_epochs), 'n_samples': np.zeros(n_epochs),  'f
              'likeness': np.zeros(n_epochs), 'D_X_test': np.zeros(n_epochs), 'fri%': np.zeros(n_epochs)}
 
 # load inception model
-I = torch.load(EVAL_PATH + '/I.pt').cuda()
+I = torch.load(EVAL_PATH + '/I.pt').cpu()
 # load full datasets for plotting latent space #
 X_full, y_full = load_data(batch_size, label=label, reduce=True, array=True)
+
+mu_fid, sigma_fid = compute_mu_sig(I, X_full)
 
 # initialise noise for grid images so that latent vector is same every time
 Z_plot = Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)
@@ -99,8 +100,8 @@ for epoch in range(n_epochs):
             samples += X.size()[0]
             X = X.cuda()
 
-            # if i ==2:
-            #	break
+            # if i == 2:
+            #    break
 
             # check X is normalised properly
             if torch.max(X.pow(2)) > 1:
@@ -108,6 +109,8 @@ for epoch in range(n_epochs):
 
             n_X = X.shape[0]
             ones, zeros = labels(label_flip, smoothing, p_flip, smoothing_scale, n_X)
+
+            G = G.cuda()
 
             ############################################
             ########### update discriminator ###########
@@ -219,28 +222,32 @@ for epoch in range(n_epochs):
     L_dict['y_gen'][epoch] = y_gen/(iterations*n_cycles)
     L_dict['y_recon'][epoch] = y_recon/(iterations*n_cycles)
 
-    if epoch % 10 == 0:
+    if (epoch+1) % 10 == 0:
         torch.save(E, CHECKPOINT_PATH + f'/E_fr{label+1}_{epoch}.pt')
-        torch.save(G, CHECKPOINT_PATH + f'/G_fr{label+1}_{epoch}.pt')
         torch.save(D, CHECKPOINT_PATH + f'/D_fr{label+1}_{epoch}.pt')
         torch.save(L_dict, EVAL_PATH + '/L_dict.pt')
 
+    # Save generator every epoch
+    torch.save(G, CHECKPOINT_PATH + f'/G_fr{label+1}_{epoch}.pt')
+
     with torch.no_grad():
         ## plot and save losses/images ##
-        if epoch % 1 == 0:
-            plot_losses(L_dict, epoch)
-            # plot_images(X, E, G, n_z, epoch)
+        # if epoch % 1 == 0:
+        #    plot_losses(L_dict, epoch)
+        # plot_images(X, E, G, n_z, epoch)
+
         ## plot latent space if we're in 2d ##
-        if n_z == 2 and epoch % 5 == 0:
-            plot_z(X_full, y_full, E, epoch)
+        # if n_z == 2 and epoch % 5 == 0:
+        #    plot_z(X_full, y_full, E, epoch)
 
         ## plot image grid ##
-        if epoch % 10 == 0:
+        if (epoch+1) % 10 == 0:
             plot_grid(n_z, E, G, Z_plot, epoch, n_images=6)
-            plot_images(X, E, G, n_z, epoch)
+
+        plot_images(X, E, G, n_z, epoch)
 
         # generate a set of fake images
-        X_fake = generate(G, n_z, n_samples=y_full.shape[0]).cuda()
+        X_fake = generate(G, n_z, n_samples=1000).cpu()
 
         ## plot umap embeddings of latent space ##
         # if epoch % 10 == 0:
@@ -249,7 +256,7 @@ for epoch in range(n_epochs):
         # generate a set of fake images
         #	plot_z_fake(I, X_fake, E, epoch, n_z)
 
-        FID = fid(I, X_fake, X_full.cuda())
+        FID = fid(I, mu_fid, sigma_fid, X_fake)
         eval_dict['n_samples'][epoch] = samples
         eval_dict['fid'][epoch] = FID
         eval_dict['D_X_test'][epoch] = test_prob(D, testLoader, n_test, noise, noise_scale, epoch, n_epochs)

@@ -22,13 +22,17 @@ FAKE_PATH = os.path.join(IMAGE_PATH, 'fake')
 RECON_PATH = os.path.join(IMAGE_PATH, 'reconstructed')
 
 
-def add_noise(bool_val, X, noise_scale, epoch, n_epochs):
+def eps_noise(epoch, n_epochs):
+    epsilon = torch.clamp(torch.Tensor([0.75 - epoch/n_epochs]), min=0, max=1)
+    return epsilon
+
+    
+def add_noise(bool_val, X, noise_scale, epsilon):
     """
     If bool_val == True, add noise to the input data, otherwise leave it unchanged.
     Leave the last quarter of epochs to optimise without any noise
     """
     if bool_val == True:
-        epsilon = torch.clamp(torch.Tensor([0.75 - epoch/n_epochs]), min=0, max=1).cuda()
         X_noisey = X + torch.randn_like(X)*epsilon*noise_scale
         #X_noisey = torch.clamp(X_noisey, -1,1)
         return X_noisey
@@ -82,10 +86,10 @@ def z_sample(mu, logvar):
 
 
 def plot_losses(L_dict, epoch):
-    fig, ax = plt.subplots(1, 1)
     x_plot = L_dict['x_plot']
 
     ## plot losses for each network ##
+    fig, ax = plt.subplots(1, 1)
     ax.plot(x_plot[:epoch], L_dict['L_E'][:epoch], label='encoder loss')
     ax.plot(x_plot[:epoch], L_dict['L_G'][:epoch], label='decoder loss')
     ax.plot(x_plot[:epoch], L_dict['L_D'][:epoch], label='discriminator loss')
@@ -122,7 +126,7 @@ def plot_images(X, E, G, n_z, epoch):
     im2 = ax22.imshow(X_gen[1, :, :], cmap='hot')
     im3 = ax23.imshow(X_gen[2, :, :], cmap='hot')
     im4 = ax24.imshow(X_gen[3, :, :], cmap='hot')
-    fig.savefig(FAKE_PATH + '/epoch_{}.pdf'.format(epoch))
+    fig.savefig(FAKE_PATH + f'/epoch_{epoch+1}.pdf')
     plt.close(fig)
 
     X_sample = X[:2, :, :, :]
@@ -135,7 +139,7 @@ def plot_images(X, E, G, n_z, epoch):
     im2 = ax22.imshow(X_recon[1, :, :], cmap='hot')
     im3 = ax23.imshow(X_sample[0, :, :].cpu().view(150, 150).numpy(), cmap='hot')
     im4 = ax24.imshow(X_sample[1, :, :].cpu().view(150, 150).numpy(), cmap='hot')
-    fig.savefig(RECON_PATH + '/recon_epoch_{}.pdf'.format(epoch))
+    fig.savefig(RECON_PATH + f'/recon_epoch_{epoch+1}.pdf')
     plt.close(fig)
 
 
@@ -177,7 +181,7 @@ def plot_grid(n_z, E, G, Z_plot, epoch, n_images=6):
     for ax, im in zip(grid, img_list_p):
         ax.imshow(im, cmap='hot')
     #plt.title('generated images epoch {}'.format(epoch))
-    plt.savefig(FAKE_PATH + '/grid_X_p_{}.pdf'.format(epoch))
+    plt.savefig(FAKE_PATH + f'/grid_X_p_{epoch+1}.pdf')
     plt.close(fig)
 
     fig = plt.figure(figsize=(13., 13.))
@@ -188,8 +192,7 @@ def plot_grid(n_z, E, G, Z_plot, epoch, n_images=6):
 
     for ax, im in zip(grid, img_list_joined):
         ax.imshow(im, cmap='hot')
-    #plt.title('reconstructed images epoch {}'.format(epoch))
-    plt.savefig(RECON_PATH + '/grid_X_tilde_{}.pdf'.format(epoch))
+    plt.savefig(RECON_PATH + f'/grid_X_tilde_{epoch+1}.pdf')
     plt.close(fig)
 
 

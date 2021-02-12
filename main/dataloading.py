@@ -214,6 +214,47 @@ class MB_nohybrids(MiraBest_full):
             self.targets = targets[exclude_mask].tolist()
 
 
+class MBFRConfident(MiraBest_full):
+    """
+    Child class to load only confident FRI (0) & FRII (1)
+    [100, 102, 104] and [200, 201]
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(MBFRConfident, self).__init__(*args, **kwargs)
+
+        fr1_list = [0, 1, 2]
+        fr2_list = [5, 6]
+        exclude_list = [3, 4, 7, 8, 9]
+
+        if exclude_list == []:
+            return
+        if self.train:
+            targets = np.array(self.targets)
+            exclude = np.array(exclude_list).reshape(1, -1)
+            exclude_mask = ~(targets.reshape(-1, 1) == exclude).any(axis=1)
+            fr1 = np.array(fr1_list).reshape(1, -1)
+            fr2 = np.array(fr2_list).reshape(1, -1)
+            fr1_mask = (targets.reshape(-1, 1) == fr1).any(axis=1)
+            fr2_mask = (targets.reshape(-1, 1) == fr2).any(axis=1)
+            targets[fr1_mask] = 0  # set all FRI to Class~0
+            targets[fr2_mask] = 1  # set all FRII to Class~1
+            self.data = self.data[exclude_mask]
+            self.targets = targets[exclude_mask].tolist()
+        else:
+            targets = np.array(self.targets)
+            exclude = np.array(exclude_list).reshape(1, -1)
+            exclude_mask = ~(targets.reshape(-1, 1) == exclude).any(axis=1)
+            fr1 = np.array(fr1_list).reshape(1, -1)
+            fr2 = np.array(fr2_list).reshape(1, -1)
+            fr1_mask = (targets.reshape(-1, 1) == fr1).any(axis=1)
+            fr2_mask = (targets.reshape(-1, 1) == fr2).any(axis=1)
+            targets[fr1_mask] = 0  # set all FRI to Class 0
+            targets[fr2_mask] = 1  # set all FRII to Class 1
+            self.data = self.data[exclude_mask]
+            self.targets = targets[exclude_mask].tolist()
+
+
 class Circle_Crop(torch.nn.Module):
     """
     Set all values outside largest possible circle that fits inside image to 0
@@ -268,15 +309,15 @@ def choose_label(dset, label):
     dset.targets = targets
 
 
-def load_data(batch_size, label=1, reduce=False, fraction=0.5, array=False, fid_sample_size=10000):
+def load_data(batch_size, label=1, seed=69, reduce=False, fraction=0.5, array=False, fid_sample_size=10000):
     """
     Load data using Mirabest class
     """
 
     # set random seed for reproducible results
     torch.backends.cudnn.deterministic = True
-    torch.manual_seed(69)
-    torch.cuda.manual_seed(69)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
 
     transform = torchvision.transforms.Compose([
         T.RandomRotation(180),
@@ -284,8 +325,8 @@ def load_data(batch_size, label=1, reduce=False, fraction=0.5, array=False, fid_
         Circle_Crop()
     ])
 
-    train_data = MB_nohybrids(DATA_PATH, train=True, transform=transform, download=True)
-    test_data = MB_nohybrids(DATA_PATH, train=False, transform=transform, download=True)
+    train_data = MBFRConfident(DATA_PATH, train=True, transform=transform, download=True)
+    test_data = MBFRConfident(DATA_PATH, train=False, transform=transform, download=True)
 
     # Reduce dataset to only include given labels
     choose_label(train_data, label)
@@ -302,17 +343,14 @@ def load_data(batch_size, label=1, reduce=False, fraction=0.5, array=False, fid_
         loader = torch.utils.data.DataLoader(all_data, batch_size=len(all_data), shuffle=True)
         # Complete enough cycles to have the right amount of samples
         n_cycles = int(fid_sample_size/len(all_data))
+        X_full, y_full = torch.FloatTensor(), torch.LongTensor()
         for i in np.arange(n_cycles):
             for data in loader:
                 X, y = data
-            if i == 0:
-                X_full = X
-                y_full = y
-            else:
                 X_full = torch.cat((X_full, X), 0)
                 y_full = torch.cat((y_full, y), 0)
 
-        return X.cpu(), y.cpu()
+        return X_full.cpu(), y_full.cpu()
 
     # Load the dataset as iterable data-loaders
     else:
