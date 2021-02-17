@@ -60,14 +60,14 @@ smoothing = False
 smoothing_scale = 0.12
 # discriminator noise parameters
 noise = True
-noise_scale = 0.5
+noise_scale = 0.35
 # label flipping
 label_flip = True
 p_flip = 0.05
 # image grid plotting
 n_images = 6
 # 0 = fri 1 = frii
-label = 1
+label = 0
 
 ## load and normalise data ##
 trainLoader, testLoader, n_test = load_data(batch_size, label=label, reduce=True)
@@ -80,8 +80,10 @@ eval_dict = {'x_plot': np.arange(n_epochs), 'n_samples': np.zeros(n_epochs),  'f
              'likeness': np.zeros(n_epochs), 'D_X_test': np.zeros(n_epochs), 'fri%': np.zeros(n_epochs),
              'epsilon': np.zeros(n_epochs)}
 
+
+
 # load inception model
-I = torch.load(EVAL_PATH + '/I.pt').cpu()
+I = torch.load(EVAL_PATH + '/I.pt').cpu().eval()
 # load full datasets for plotting latent space #
 X_full, y_full = load_data(batch_size, label=label, reduce=True, array=True)
 
@@ -90,11 +92,13 @@ mu_fid, sigma_fid = compute_mu_sig(I, X_full)
 # initialise noise for grid images so that latent vector is same every time
 Z_plot = Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)
 samples = 0
+best_fid = 1000
 
 for epoch in range(n_epochs):
+    D.train()
     L_E_cum, L_G_cum, L_D_cum = 0, 0, 0
     y_recon, y_gen = 0, 0
-    epsilon = eps_noise(epoch, n_epochs)
+    epsilon = eps_noise(epoch, n_epochs).cuda()
     eval_dict['epsilon'][epoch] = epsilon
     # p_flip = p_flip_ann(epoch, n_epochs)
     for j in np.arange(n_cycles):
@@ -225,13 +229,9 @@ for epoch in range(n_epochs):
     L_dict['y_gen'][epoch] = y_gen/(iterations*n_cycles)
     L_dict['y_recon'][epoch] = y_recon/(iterations*n_cycles)
 
-    if (epoch+1) % 10 == 0:
-        torch.save(E, CHECKPOINT_PATH + f'/E_fr{label+1}_{epoch}.pt')
-        torch.save(D, CHECKPOINT_PATH + f'/D_fr{label+1}_{epoch}.pt')
-        torch.save(L_dict, EVAL_PATH + '/L_dict.pt')
-
-    # Save generator every epoch
-    torch.save(G, CHECKPOINT_PATH + f'/G_fr{label+1}_{epoch}.pt')
+    #if (epoch+1) % 10 == 0:
+        #torch.save(D, CHECKPOINT_PATH + f'/D_fr{label+1}_{epoch}.pt')
+        #torch.save(L_dict, EVAL_PATH + '/L_dict.pt')
 
     with torch.no_grad():
         ## plot and save losses/images ##
@@ -260,9 +260,22 @@ for epoch in range(n_epochs):
         FID = fid(I, mu_fid, sigma_fid, X_fake)
         eval_dict['n_samples'][epoch] = samples
         eval_dict['fid'][epoch] = FID
-        eval_dict['D_X_test'][epoch] = test_prob(D, testLoader, n_test, noise, noise_scale, epoch, n_epochs)
+        eval_dict['D_X_test'][epoch] = test_prob(D.eval(), testLoader, n_test, noise, noise_scale, epsilon)
         eval_dict['fri%'][epoch] = ratio(X_fake, I)
 
         plot_eval_dict(eval_dict, epoch)
 
-    print(f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {FID:.3f}')
+        print(f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {FID:.3f}')
+
+        # Save generator/encoder weights if FID score is high
+        if FID < best_fid:
+            print('Model saved')
+            best_fid = int(FID)
+            plot_grid(n_z, E, G, Z_plot, epoch, n_images=6)
+            torch.save({'epoch': epoch,
+                        'G': G.state_dict(),
+                        'E': E.state_dict(),
+                        'FID': FID,
+                        }, CHECKPOINT_PATH + f'/model_dict_fr{label+1}_e{epoch+1}_fid{int(FID)}.pt')
+
+

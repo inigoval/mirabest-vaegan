@@ -23,7 +23,7 @@ RECON_PATH = os.path.join(IMAGE_PATH, 'reconstructed')
 
 
 def eps_noise(epoch, n_epochs):
-    epsilon = torch.clamp(torch.Tensor([0.75 - epoch/n_epochs]), min=0, max=1)
+    epsilon = torch.clamp(torch.Tensor([1 - 1.33333333*epoch/n_epochs]), min=0, max=1)
     return epsilon
 
     

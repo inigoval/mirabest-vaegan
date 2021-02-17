@@ -97,7 +97,7 @@ def fid(I, mu_real, sigma_real, X):
     return fid
 
 
-def test_prob(D, testLoader, n_test, bool_val, noise_scale, epoch, n_epochs):
+def test_prob(D, testLoader, n_test, bool_val, noise_scale, epsilon):
     """ 
     Evaluate the discriminator output for held out real samples (to detect overfitting)
     A value close to 1 means close to no overfitting, a value close to zero implies
@@ -106,7 +106,7 @@ def test_prob(D, testLoader, n_test, bool_val, noise_scale, epoch, n_epochs):
     D_sum = 0.
     for data in testLoader:
         X, _ = data
-        X = add_noise(bool_val, X.cuda(), noise_scale, epoch, n_epochs).cuda()
+        X = add_noise(bool_val, X.cuda(), noise_scale, epsilon).cuda()
         D_X = D(X)[0].view(-1)
         D_sum += torch.sum(D_X).item()
     D_avg = D_sum/n_test
@@ -137,16 +137,17 @@ def plot_eval_dict(eval_dict, epoch):
 
     ## plot frechet inception distance ##
     fig, ax1 = plt.subplots()
-    ax1.set_xlabel('epoch')
+    ax1.set_xlabel('n')
     ax1.set_ylabel('FID')
     ax1.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
     ax1.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
-    ax1.set_ylim(0, 500)
+    # ax1.set_xticklabels([f'{t:.3e}' for t in ax1.get_yticks()])
+    ax1.set_ylim(0, 700)
 
     ax2 = ax1.twinx()
     color = 'tab:red'
     ax2.set_ylabel('epsilon', color=color)
-    ax2.plot(x_plot[:epoch], epsilon[:epoch], '--')
+    ax2.plot(x_plot[:epoch], epsilon[:epoch], '--', color='red')
     ax2.tick_params(axis='y', labelcolor=color)
     fig.savefig(EVAL_PATH + '/frechet_distance.pdf')
     plt.close(fig)
@@ -155,7 +156,8 @@ def plot_eval_dict(eval_dict, epoch):
     fig, ax = plt.subplots(1, 1)
     ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
     ax.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
-    ax.set_xlabel('epoch')
+    #ax.set_xticklabels([f'{t:.3e}' for t in ax.get_yticks()])
+    ax.set_xlabel('n')
     ax.set_ylabel('FID')
     ax.set_ylim(0, 150)
     fig.savefig(EVAL_PATH + '/frechet_distance-zoomed.pdf')
@@ -165,7 +167,8 @@ def plot_eval_dict(eval_dict, epoch):
     fig, ax = plt.subplots(1, 1)
     ax.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
     ax.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
-    ax.set_xlabel('epoch')
+    #ax.set_xticklabels([f'{t:.3e}' for t in ax.get_yticks()])
+    ax.set_xlabel('n')
     ax.set_ylabel('FID')
     ax.set_ylim(0, 50)
     fig.savefig(EVAL_PATH + '/frechet_distance-extra-zoomed.pdf')
@@ -175,7 +178,8 @@ def plot_eval_dict(eval_dict, epoch):
     fig, ax = plt.subplots(1, 1)
     ax.plot(x_plot[:epoch], D_X_test[:epoch], label='D(X_test)')
     ax.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
-    ax.set_xlabel('epoch')
+    #ax.set_xticklabels([f'{t:.3e}' for t in ax.get_yticks()])
+    ax.set_xlabel('n')
     ax.set_ylabel('D(X_test)')
     ax.legend()
     ax.set_ylim(0, 1)
