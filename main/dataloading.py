@@ -176,7 +176,7 @@ class MiraBest_full(data.Dataset):
 
 class MB_nohybrids(MiraBest_full):
     """
-    Child class to load only frii/frii samples
+    Child class to load only frii/frii samples and collapses classes to 0 for FRI and 1 for FRII
     """
 
     def __init__(self, *args, **kwargs):
@@ -325,14 +325,14 @@ def load_data(batch_size, label=1, seed=69, reduce=False, fraction=0.5, array=Fa
         Circle_Crop()
     ])
 
-    train_data = MBFRConfident(DATA_PATH, train=True, transform=transform, download=True)
-    test_data = MBFRConfident(DATA_PATH, train=False, transform=transform, download=True)
+    train_data = MB_nohybrids(DATA_PATH, train=True, transform=transform, download=True)
+    test_data = MB_nohybrids(DATA_PATH, train=False, transform=transform, download=True)
 
     # Reduce dataset to only include given labels
     choose_label(train_data, label)
     choose_label(test_data, label)
 
-    # Subset the full dataset
+    # Subset the training set, keep the test set the same.
     if reduce:
         train_data = subset(train_data, fraction)
         # test_data = subset(test_data, fraction)
