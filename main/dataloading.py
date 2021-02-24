@@ -341,6 +341,7 @@ def load_data(batch_size, label=1, seed=69, reduce=False, fraction=0.5, array=Fa
     if array:
         all_data = torch.utils.data.ConcatDataset((train_data, test_data))
         loader = torch.utils.data.DataLoader(all_data, batch_size=len(all_data), shuffle=True)
+
         # Complete enough cycles to have the right amount of samples
         n_cycles = int(fid_sample_size/len(all_data))
         X_full, y_full = torch.FloatTensor(), torch.LongTensor()
