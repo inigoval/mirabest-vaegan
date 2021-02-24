@@ -7,7 +7,7 @@ import numpy as np
 import os
 
 from networks import enc, dec, disc, I
-from utilities import add_noise, p_flip_ann, labels, KL_loss, z_sample, plot_losses, plot_images, plot_grid, parse_config, set_train
+from utilities import add_noise, p_flip_ann, labels, KL_loss, z_sample, plot_losses, plot_images, plot_grid, parse_config, set_train, set_eval
 from dataloading import load_data
 from evaluation import compute_mu_sig, fid, test_prob, ratio, plot_eval_dict, generate
 
@@ -216,6 +216,8 @@ for epoch in range(n_epochs):
         #torch.save(L_dict, EVAL_PATH + '/L_dict.pt')
 
     with torch.no_grad():
+        # Set models to evaluation mode
+        set_eval(E, G, D)
 
         ## Plot image grid at regular intervals ##
         if (epoch+1) % 10 == 0:
