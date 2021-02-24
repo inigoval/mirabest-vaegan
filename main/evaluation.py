@@ -97,7 +97,7 @@ def fid(I, mu_real, sigma_real, X):
     return fid
 
 
-def test_prob(D, testLoader, n_test, bool_val, noise_scale, epsilon):
+def test_prob(D, testLoader, n_test, add_noise):
     """ 
     Evaluate the discriminator output for held out real samples (to detect overfitting)
     A value close to 1 means close to no overfitting, a value close to zero implies
@@ -106,7 +106,7 @@ def test_prob(D, testLoader, n_test, bool_val, noise_scale, epsilon):
     D_sum = 0.
     for data in testLoader:
         X, _ = data
-        X = add_noise(bool_val, X.cuda(), noise_scale, epsilon).cuda()
+        X = add_noise(X.cuda()).cuda()
         D_X = D(X)[0].view(-1)
         D_sum += torch.sum(D_X).item()
     D_avg = D_sum/n_test

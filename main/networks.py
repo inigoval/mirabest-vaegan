@@ -109,6 +109,13 @@ class dec(nn.Module):
         x = self.conv5(x).view(-1, 1, 150, 150)
         return x
 
+    def backprop(self, y_pred, y ,loss, retain_graph=True):
+        """
+        Pass a tuple of tuples with each tuple of form (X, y, loss) 
+        """
+        L = loss(y_pred, y)
+        L.backward(retain_graph=retain_graph)
+        return L
 
 class disc(nn.Module):
     def __init__(self):
@@ -153,6 +160,14 @@ class disc(nn.Module):
         y_pred = self.conv5(x).view(-1)
         return y_pred, D_l
 
+    def backprop(self, X, y, loss):
+        """
+        Pass a tuple of tuples with each tuple of form (X, y, loss) 
+        """
+        y_pred = self.forward(X)[0].view(-1)
+        L = loss(y_pred, y)
+        L.backward()
+        return L
 
 class I(nn.Module):
     def __init__(self):

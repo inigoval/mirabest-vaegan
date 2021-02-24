@@ -7,11 +7,9 @@ import numpy as np
 import os
 
 from networks import enc, dec, disc, I
-from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
-from utilities import plot_images, KL_loss, plot_grid, y_collapsed, eps_noise
+from utilities import add_noise, p_flip_ann, labels, KL_loss, z_sample, plot_losses, plot_images, plot_grid, parse_config, set_train
 from dataloading import load_data
-from evaluation import plot_z_fake, plot_z_real, generate, inception_score
-from evaluation import fid, plot_eval_dict, plot_z, test_prob, ratio, compute_mu_sig
+from evaluation import compute_mu_sig, fid, test_prob, ratio, plot_eval_dict, generate
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,6 +19,7 @@ DATA_PATH = os.path.join(FILE_PATH, 'data')
 CHECKPOINT_PATH = os.path.join(FILE_PATH, 'files', 'checkpoints')
 FIG_PATH = os.path.join(FILE_PATH, 'files', 'figs')
 IMAGE_PATH = os.path.join(FILE_PATH, 'files', 'images')
+CONFIG_PATH = os.path.join(FILE_PATH, 'configs')
 
 EMBEDDING_PATH = os.path.join(EVAL_PATH, 'embeddings')
 FAKE_PATH = os.path.join(IMAGE_PATH, 'fake')
@@ -33,9 +32,12 @@ path_list = [FILE_PATH, EVAL_PATH, DATA_PATH, CHECKPOINT_PATH, FIG_PATH,
              IMAGE_PATH, EMBEDDING_PATH, FAKE_PATH, RECON_PATH, EMBEDDING_PATH_FAKE,
              EMBEDDING_PATH_REAL]
 
+# Create any directories that don't exist
 for path in path_list:
     if not os.path.exists(path):
         os.makedirs(path)
+
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 cuda = torch.device('cuda')
@@ -59,7 +61,6 @@ gamma = 1  # weighting for style (L_llike) in generator loss function
 smoothing = False
 smoothing_scale = 0.12
 # discriminator noise parameters
-noise = True
 noise_scale = 0.35
 # label flipping
 label_flip = True
@@ -81,30 +82,41 @@ eval_dict = {'x_plot': np.arange(n_epochs), 'n_samples': np.zeros(n_epochs),  'f
              'epsilon': np.zeros(n_epochs)}
 
 
-
-# load inception model
+# Load pretrained classifier model
 I = torch.load(EVAL_PATH + '/I.pt').cpu().eval()
-# load full datasets for plotting latent space #
+
+# Load full datasets for evaluation
 X_full, y_full = load_data(batch_size, label=label, reduce=True, array=True)
 
+
+# Initialise random Z 
+Z_plot = Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)
+# Compute mean and covariance matrix for real data
 mu_fid, sigma_fid = compute_mu_sig(I, X_full)
 
-# initialise noise for grid images so that latent vector is same every time
-Z_plot = Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)
+# Initialise some metrics
 samples = 0
-best_fid = 1000
+best_fid = 100 
+
 
 for epoch in range(n_epochs):
-    D.train()
+
+    # Set models to train mode #
+    set_train(E, G, D)
+
+    # Initialise annealed noise 
+    add_noise = add_noise(noise_scale, epoch, n_epochs)
+
+    # Initialise metrics
     L_E_cum, L_G_cum, L_D_cum = 0, 0, 0
     y_recon, y_gen = 0, 0
-    epsilon = eps_noise(epoch, n_epochs).cuda()
-    eval_dict['epsilon'][epoch] = epsilon
-    # p_flip = p_flip_ann(epoch, n_epochs)
+    eval_dict['epsilon'][epoch] = add_noise.epsilon
+
     for j in np.arange(n_cycles):
         for i, data in enumerate(trainLoader, 0):
             X, _ = data
-            samples += X.size()[0]
+            n_X = X.shape[0]
+            samples += n_X
             X = X.cuda()
 
             # if i == 2:
@@ -114,82 +126,62 @@ for epoch in range(n_epochs):
             if torch.max(X.pow(2)) > 1:
                 print('overflow')
 
-            n_X = X.shape[0]
             ones, zeros = labels(label_flip, smoothing, p_flip, smoothing_scale, n_X)
 
-            G = G.cuda()
+
+           
+            # Add noise to data (ready for discriminator input)
+            X_noisey = add_noise(X)
+
+            # Encode data point and reconstruct from latent space
+            mu, logvar = E(X.detach())
+            X_tilde = G(z_sample(mu.detach(), logvar.detach()))
+            X_tilde = add_noise(X_tilde)
+
+            # Generate random data point
+            Z = torch.randn_like(mu)
+            X_p = G(Z)
+            X_p = add_noise(X_p)
 
             ############################################
             ########### update discriminator ###########
             ############################################
             D_opt.zero_grad()
 
-            ## train with all real batch ##
-            y_X = D(add_noise(noise, X, noise_scale, epsilon))[0]
-            y_X = y_X.view(-1)
-            L_D_X = BCE_loss(y_X, ones)
-            L_D_X.backward()
+            # Calculate gradients
+            L_D_real = D.backprop(X_noisey, ones, BCE_loss)
+            L_D_fake = D.backprop(X_p, zeros, BCE_loss)
+            L_D_recon = D.backprop(X_tilde, zeros, BCE_loss)
 
-            ## train with reconstructed batch ##
-            # decode data point and reconstruct from latent space
-            mu, logvar = E(X.detach())
-            X_tilde = G(z_sample(mu.detach(), logvar.detach()))
-            # pass through discriminator -> backprop loss
-            y_X_tilde = D(add_noise(noise, X_tilde, noise_scale, epsilon).detach())[0].view(-1)
-            L_D_X_tilde = BCE_loss(y_X_tilde, zeros)
-            L_D_X_tilde.backward()
-
-            ## train with random batch ##
-            # sample z from p(z) = N(0,1) -> generate X
-            Z = torch.randn_like(mu)
-            X_p = G(Z)
-            # pass through Discriminator -> backprop loss
-            y_X_p = D(add_noise(noise, X_p, noise_scale, epsilon).detach())[0].view(-1)
-            L_D_X_p = BCE_loss(y_X_p, zeros)
-            L_D_X_p.backward()
-
-            # sum gradients
-            L_D = (L_D_X + L_D_X_p + L_D_X_tilde)/3
-
-            # step optimizer
-            # if L_D > L_G:
+            ## Combine gradients and step optimizer ##
+            L_D = (L_D_real + L_D_fake + L_D_recon)/3
             D_opt.step()
 
             ############################################
             ############# update decoder ###############
             ############################################
-
             G_opt.zero_grad()
 
-            ## train with reconstructed batch ##
-            # decode data point and reconstruct from latent space
-            # ------>>>>  mu, logvar = E(X.detach()) <<< ---------
-            X_tilde = G(z_sample(mu.detach(), logvar.detach()))
-            # pass through Driminator -> backprop loss
-            y_X_tilde, D_l_X_tilde = D(add_noise(noise, X_tilde, noise_scale, epsilon))
+            ## Reconstructed batch ##
+            y_X_tilde, D_l_recon = D(X_tilde)
             y_X_tilde = y_X_tilde.view(-1)
-            L_G_X_tilde = BCE_loss(y_X_tilde, ones)
-            L_G_X_tilde.backward(retain_graph=True)
-            y_recon += y_X_tilde.mean().item()  # average and save output probability
+            L_G_recon = G.backprop(y_recon, ones, BCE_loss)
+            # Average and save output probability
+            y_recon += y_X_tilde.mean().item()
 
-            ## train with random batch ##
-            # sample z from p(z) = N(0,1) -> generate X
-            X_p = G(Z)
-            # pass through Driminator -> backprop loss
-            y_X_p = D(add_noise(noise, X_p, noise_scale, epsilon))[0].view(-1)
-            L_G_X_p = BCE_loss(y_X_p, ones)
-            L_G_X_p.backward(retain_graph=True)
-            y_gen += y_X_p.mean().item()  # average and save output probability
+            ## Fake batch ##
+            y_X_p = D(X_p)[0].view(-1)
+            L_G_fake = G.backprop(y_X_p, ones)
+            # Average and save output probability
+            y_gen += y_X_p.mean().item()  
 
             ## VAE loss ##
-            D_l_X = D(X)[1]
-            L_G_llike = MSE_loss(D_l_X, D_l_X_tilde)*gamma  # maybe detach D output here
-            L_G_llike.backward()
+            D_l_real = D(X_noisey)[1]
+            L_G_llike = MSE_loss(D_l_X, D_l_X_tilde)*gamma 
+            L_G_llike.backward()            
 
-            ## sum gradients ##
-            L_G = (L_G_X_p + L_G_X_tilde)/2 + L_G_llike
-
-            # step optimizer
+            ## Sum gradients and step optimizer##
+            L_G = (L_G_fake + L_G_recon)/2 + L_G_llike
             G_opt.step()
 
             ############################################
@@ -203,29 +195,19 @@ for epoch in range(n_epochs):
             L_E_KL.backward(retain_graph=True)
 
             ## llike loss ##
-            # forward passes to generate feature maps
+            # Forward passes to generate feature maps
             X_tilde = G(z_sample(mu, logvar))
             _, D_l_X_tilde = D(X_tilde)
-            _, D_l_X = D(X)
-            L_E_llike = MSE_loss(D_l_X, D_l_X_tilde)
+            L_E_llike = MSE_loss(D_l_real, D_l_X_tilde)
             L_E_llike.backward()
-            # sum losses
+
+            ## Sum losses and step optimizer ##
             L_E = L_E_llike + L_E_KL
-
-            # step optimizer
             E_opt.step()
-
-            # update cumulative losses
-            L_E_cum += L_E.item()
-            L_G_cum += L_G.item()
-            L_D_cum += L_D.item()
 
             iterations = i
 
     ## insert cumulative losses into dictionary ##
-    L_dict['L_E'][epoch] = L_E_cum/(iterations*n_cycles)
-    L_dict['L_G'][epoch] = L_G_cum/(iterations*n_cycles)
-    L_dict['L_D'][epoch] = L_D_cum/(iterations*n_cycles)
     L_dict['y_gen'][epoch] = y_gen/(iterations*n_cycles)
     L_dict['y_recon'][epoch] = y_recon/(iterations*n_cycles)
 
@@ -234,33 +216,20 @@ for epoch in range(n_epochs):
         #torch.save(L_dict, EVAL_PATH + '/L_dict.pt')
 
     with torch.no_grad():
-        ## plot and save losses/images ##
-        # if epoch % 1 == 0:
-        #    plot_losses(L_dict, epoch)
 
-        ## plot latent space if we're in 2d ##
-        #    plot_z(X_full, y_full, E, epoch)
-
-        ## plot image grid ##
+        ## Plot image grid at regular intervals ##
         if (epoch+1) % 10 == 0:
             plot_grid(n_z, E, G, Z_plot, epoch, n_images=6)
 
         plot_images(X, E, G, n_z, epoch)
 
-        # generate a set of fake images
+        # Generate a set of fake images for evaluation
         X_fake = generate(G, n_z, n_samples=1000).cpu()
-
-        ## plot umap embeddings of latent space ##
-        # if epoch % 10 == 0:
-        #	plot_z_real(X_full, y_full, E, epoch, n_z)
-
-        # generate a set of fake images
-        #	plot_z_fake(I, X_fake, E, epoch, n_z)
 
         FID = fid(I, mu_fid, sigma_fid, X_fake)
         eval_dict['n_samples'][epoch] = samples
         eval_dict['fid'][epoch] = FID
-        eval_dict['D_X_test'][epoch] = test_prob(D.eval(), testLoader, n_test, noise, noise_scale, epsilon)
+        eval_dict['D_X_test'][epoch] = test_prob(D.eval(), testLoader, n_test, add_noise)
         eval_dict['fri%'][epoch] = ratio(X_fake, I)
 
         plot_eval_dict(eval_dict, epoch)

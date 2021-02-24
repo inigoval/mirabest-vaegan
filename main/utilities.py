@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import os
+import ast
+import configparser
 from mpl_toolkits.axes_grid1 import ImageGrid
 from dataloading import MiraBest_full
 
@@ -21,23 +23,29 @@ EMBEDDING_PATH = os.path.join(EVAL_PATH, 'embeddings')
 FAKE_PATH = os.path.join(IMAGE_PATH, 'fake')
 RECON_PATH = os.path.join(IMAGE_PATH, 'reconstructed')
 
-
-def eps_noise(epoch, n_epochs):
-    epsilon = torch.clamp(torch.Tensor([1 - 1.33333333*epoch/n_epochs]), min=0, max=1)
-    return epsilon
-
-    
-def add_noise(bool_val, X, noise_scale, epsilon):
+class add_noise():
     """
-    If bool_val == True, add noise to the input data, otherwise leave it unchanged.
+    Adds noise of a given amplitude to the input images X
     Leave the last quarter of epochs to optimise without any noise
     """
-    if bool_val == True:
-        X_noisey = X + torch.randn_like(X)*epsilon*noise_scale
-        #X_noisey = torch.clamp(X_noisey, -1,1)
-        return X_noisey
-    else:
-        return X
+    def __init__(self, noise_scale, epoch, n_epochs):
+        self.noise_scale = noise_scale
+        self.epoch = epoch
+        self.n_epochs = n_epochs
+        self.epsilon = self.get_epsilon(epoch, n_epochs)
+
+    def __call__(self, X):
+        if self.noise_scale > 0:
+            noise = torch.randn_like(X)*self.epsilon*self.noise_scale
+            X_noisey += noise  
+            return X_noisey
+        else:
+            return X
+
+    @staticmethod
+    def get_epsilon(epoch, n_epochs):
+        epsilon = torch.clamp(torch.Tensor([1 - 1.33333333*epoch/n_epochs]), min=0, max=1)
+        return epsilon
 
 
 def p_flip_ann(epoch, n_epochs):
@@ -65,14 +73,15 @@ def labels(label_flip, smoothing, p_flip, smoothing_scale, n_X):
     return ones, zeros
 
 
-# define losses
-scalar_tensor = torch.ones(1)
+def set_train(*models):
+    for model in models:
+        model.train()
 
 
 def KL_loss(mu, logvar):
     kl = -0.5 * torch.mean(1 + logvar - logvar.exp() - mu.pow(2)).view(1)
     #print('kl loss: ', kl)
-    assert kl.size() == scalar_tensor.size()
+    assert kl.size() ==torch.ones(1).size()
     return kl
 
 
@@ -214,10 +223,36 @@ def set_requires_grad(network, bool_val):
         p.requires_grad = bool_val
 
 
-def weights_init(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv') != -1:
-        nn.init.normal_(m.weight.data, 0.0, 0.02)
-    elif classname.find('BatchNorm') != -1:
-        nn.init.normal_(m.weight.data, 1.0, 0.02)
-        nn.init.constant_(m.bias.data, 0)
+def parse_config(filename):
+    
+    config = configparser.SafeConfigParser(allow_no_value=True)
+    config.read(filename)
+    
+    # Build a nested dictionary with tasknames at the top level
+    # and parameter values one level down.
+    taskvals = dict()
+    for section in config.sections():
+        
+        if section not in taskvals:
+            taskvals[section] = dict()
+        
+        for option in config.options(section):
+            # Evaluate to the right type()
+            try:
+                taskvals[section][option] = ast.literal_eval(config.get(section, option))
+            except (ValueError,SyntaxError):
+                err = "Cannot format field '{0}' in config file '{1}'".format(option,filename)
+                err += ", which is currently set to {0}. Ensure strings are in 'quotes'.".format(config.get(section, option))
+                raise ValueError(err)
+
+    return taskvals, config
+
+
+def weights_init(*models):
+    for m in models:
+        classname = m.__class__.__name__
+        if classname.find('Conv') != -1:
+            nn.init.normal_(m.weight.data, 0.0, 0.02)
+        elif classname.find('BatchNorm') != -1:
+            nn.init.normal_(m.weight.data, 1.0, 0.02)
+            nn.init.constant_(m.bias.data, 0)
