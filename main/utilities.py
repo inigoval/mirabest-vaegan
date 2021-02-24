@@ -77,6 +77,11 @@ def set_train(*models):
     for model in models:
         model.train()
 
+def set_eval(*models):
+    for model in models:
+        model.eval()
+
+
 
 def KL_loss(mu, logvar):
     kl = -0.5 * torch.mean(1 + logvar - logvar.exp() - mu.pow(2)).view(1)
