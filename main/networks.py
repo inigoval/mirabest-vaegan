@@ -21,11 +21,11 @@ batch_size = 32
 class enc(nn.Module):
     # Conv2D(in_channels, out_channels, kernel size, stride, padding)
     # conv1 (1, 150, 150)  ->  (16, 75, 75)
-    # conv2 (16, 75, 75)   ->  (32, 36, 36)
-    # conv3 (32, 36, 36)   ->  (64, 18, 18)
-    # conv4 (64, 16, 16)   ->  (128, 8, 8)
-    # conv5 (128, 8, 8)    ->  (256, 4, 4)
-    # fc    (256*4*4)       ->  (n_z)
+    # conv2 (16, 75, 75)   ->  (32, 37, 37)
+    # conv3 (32, 37, 37)   ->  (64, 18, 18)
+    # conv4 (64, 18, 18)   ->  (128, 9, 9)
+    # conv5 (128, 9, 9)    ->  (256, 4, 4)
+    # fc    (256*4*4)       ->  (n_z, 1, 1)
     def __init__(self):
         super(enc, self).__init__()
         self.conv1 = nn.Sequential(
@@ -34,12 +34,12 @@ class enc(nn.Module):
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv2 = nn.Sequential(
-            nn.Conv2d(16, 32, 7, 2, 1, bias=False),
+            nn.Conv2d(16, 32, 5, 2, 1, bias=False),
             nn.BatchNorm2d(32),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv3 = nn.Sequential(
-            nn.Conv2d(32, 64, 6, 2, 1, bias=False),
+            nn.Conv2d(32, 64, 5, 2, 1, bias=False),
             nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2, inplace=True))
 
@@ -49,7 +49,7 @@ class enc(nn.Module):
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv5 = nn.Sequential(
-            nn.Conv2d(128, 256, 4, 2, 1, bias=False),
+            nn.Conv2d(128, 256, 5, 2, 1, bias=False),
             nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2, inplace=True))
 
@@ -70,35 +70,41 @@ class enc(nn.Module):
 
 
 class dec(nn.Module):
-    # conv1 (100, 1, 1)   ->  (128, 8,  8)
-    # conv2 (128, 8, 8)   ->  (64, 4, 4)
-    # conv3 (64, 4, 4)    ->  (32, 34, 34)
-    # conv4 (32, 34, 34)  ->  (16, 70, 70)
-    # conv5 (16, 70, 70)  ->  (1, 150, 150)
+    # conv1 (n_z, 1, 1)   ->  (256, 4, 4)
+    # conv2 (256, 4, 4)   ->  (128, 9, 9)
+    # conv3 (128, 9, 9)   ->  (64, 17, 17)
+    # conv4 (64, 17, 17)  ->  (32, 37 ,37)
+    # conv5 (32, 37, 37)  ->  (16, 75, 75)
+    # conv6 (16, 75, 75)  ->  (1, 150, 150)
     def __init__(self):
         super(dec, self).__init__()
         self.conv1 = nn.Sequential(
-            nn.ConvTranspose2d(n_z, n_gf*8, 7, 1, 0, bias=False),
-            nn.BatchNorm2d(n_gf*8),
+            nn.ConvTranspose2d(n_z, n_gf*16, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(n_gf*16),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv2 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf*8, n_gf*4, 6, 2, 1, bias=False),
-            nn.BatchNorm2d(n_gf*4),
+            nn.ConvTranspose2d(n_gf*16, n_gf*8, 5, 2, 1, bias=False),
+            nn.BatchNorm2d(n_gf*8),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv3 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf*4, n_gf*2, 6, 2, 1, bias=False),
-            nn.BatchNorm2d(n_gf*2),
+            nn.ConvTranspose2d(n_gf*8, n_gf*4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(n_gf*4),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv4 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf*2, n_gf, 6, 2, 1, bias=False),
-            nn.BatchNorm2d(n_gf),
+            nn.ConvTranspose2d(n_gf*4, n_gf*2, 5, 2, 1, bias=False),
+            nn.BatchNorm2d(n_gf*2),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv5 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf, 1, 14, 2, 1, bias=False),
+            nn.ConvTranspose2d(n_gf*2, n_gf, 5, 2, 1, bias=False),
+            nn.BatchNorm2d(n_gf),
+            nn.LeakyReLU(0.2, inplace=True))
+
+        self.conv6 = nn.Sequential(
+            nn.ConvTranspose2d(n_gf, 1, 4, 2, 1, bias=False),
             nn.Sigmoid())
 
     def forward(self, z):
@@ -106,7 +112,8 @@ class dec(nn.Module):
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
-        x = self.conv5(x).view(-1, 1, 150, 150)
+        x = self.conv5(x)
+        x = self.conv6(x).view(-1, 1, 150, 150)
         return x
 
     def backprop(self, y_pred, y ,loss, retain_graph=True):
@@ -117,57 +124,66 @@ class dec(nn.Module):
         L.backward(retain_graph=retain_graph)
         return L
 
+
 class disc(nn.Module):
     def __init__(self):
         super(disc, self).__init__()
         # Conv2D(in_channels, out_channels, kernel size, stride, padding)
 
-        # conv1 (1, 150, 150)  ->  (16, 70, 70)
-        # conv2 (16, 70, 70)   ->  (32, 34, 34)
-        # conv3 (32, 34, 34)    ->  (64, 18, 18)
-        # conv4 (64, 4, 4)    ->  (128, 8, 8)
-        # conv5 (128, 8, 8)    ->  (1, 1, 1)
+        # conv1 (1, 150, 150)   ->  (16, 75, 75)
+        # conv2 (16, 75, 75)    ->  (32, 37, 37)
+        # conv3 (32, 37, 37)    ->  (64, 18, 18)
+        # conv4 (64, 18, 18)    ->  (128, 9, 9)
+        # conv5 (128, 9, 9)     ->  (256, 4, 4)
+        # conv6 (256, 4, 4)     ->  (1, 1, 1)
 
         self.conv1 = nn.Sequential(
-            nn.Conv2d(1, n_df, 14, 2, 1, bias=False),
+            nn.Conv2d(1, n_df, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv2 = nn.Sequential(
-            nn.Conv2d(n_df, n_df*2, 6, 2, 1, bias=False),
+            nn.Conv2d(n_df, n_df*2, 5, 2, 1, bias=False),
             nn.BatchNorm2d(n_df*2),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv3 = nn.Sequential(
-            nn.Conv2d(n_df*2, n_df*4, 6, 2, 1, bias=False),
+            nn.Conv2d(n_df*2, n_df*4, 5, 2, 1, bias=False),
             nn.BatchNorm2d(n_df*4),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv4 = nn.Sequential(
-            nn.Conv2d(n_df*4, n_df*8, 6, 2, 1, bias=False),
+            nn.Conv2d(n_df*4, n_df*8, 4, 2, 1, bias=False),
             nn.BatchNorm2d(n_df*8),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv5 = nn.Sequential(
-            nn.Conv2d(n_df*8, 1, 7, 1, 0, bias=False),
+            nn.Conv2d(n_df*8, n_df*16, 5, 2, 1, bias=False),
+            nn.BatchNorm2d(n_df*16),
+            nn.LeakyReLU(0.2, inplace=True))
+
+        self.conv6 = nn.Sequential(
+            nn.Conv2d(n_df*16, 1, 4, 1, 0, bias=False),
             nn.Sigmoid())
 
     def forward(self, x):
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
-        D_l = x.clone()
         x = self.conv4(x)
-        y_pred = self.conv5(x).view(-1)
+        x = self.conv5(x)
+        D_l = x.clone()
+        y_pred = self.conv6(x).view(-1)
         return y_pred, D_l
 
-    def backprop(self, X, y, loss):
+    def backprop(self, X, y, loss, retain_graph=False):
         """
         Pass a tuple of tuples with each tuple of form (X, y, loss) 
         """
         y_pred = self.forward(X)[0].view(-1)
         L = loss(y_pred, y)
-        L.backward()
+        L.backward(retain_graph=retain_graph)
         return L
+
 
 class I(nn.Module):
     def __init__(self):

@@ -9,7 +9,6 @@ from sklearn.preprocessing import StandardScaler
 from scipy.linalg import sqrtm
 
 from dataloading import load_data, MiraBest_full
-from utilities import y_collapsed, add_noise
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,6 +24,37 @@ EMBEDDING_PATH_REAL = os.path.join(EMBEDDING_PATH, 'real')
 EMBEDDING_PATH_FAKE = os.path.join(EMBEDDING_PATH, 'fake')
 
 cuda = torch.device('cuda')
+
+
+class FID():
+    """
+    Initialise the class with classifier model and training data to use as reference
+    """
+    def __init__(self, I, data):
+        self.I = I
+        self.mu_real, self.sigma_real = self.compute_mu_sig(I, data)
+
+    def calculate_fid(self, X_fake):
+        mu, sigma = self.compute_mu_sig(self.I, X_fake)
+
+        S = sqrtm((np.dot(sigma, self.sigma_real)))
+
+        if np.iscomplexobj(S):
+            S = S.real
+
+        Dmu = np.square(mu - self.mu_real).sum()
+
+        fid = Dmu + np.trace((sigma + self.sigma_real - 2*S), axis1=0, axis2=1)
+        self.fid = fid
+        return fid
+    
+    @staticmethod
+    def compute_mu_sig(I, data):
+        _ = I(data)
+        fid_layer = I.fid_layer.detach().cpu().numpy()
+        mu = np.mean(fid_layer, axis=0)
+        sigma = np.cov(fid_layer, rowvar=False)
+        return mu, sigma
 
 
 def dset_array(cuda=False):

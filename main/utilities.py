@@ -28,24 +28,22 @@ class add_noise():
     Adds noise of a given amplitude to the input images X
     Leave the last quarter of epochs to optimise without any noise
     """
-    def __init__(self, noise_scale, epoch, n_epochs):
+    def __init__(self, noise_scale):
         self.noise_scale = noise_scale
-        self.epoch = epoch
-        self.n_epochs = n_epochs
-        self.epsilon = self.get_epsilon(epoch, n_epochs)
+        self.epsilon = 0
 
     def __call__(self, X):
         if self.noise_scale > 0:
             noise = torch.randn_like(X)*self.epsilon*self.noise_scale
-            X_noisey += noise  
-            return X_noisey
+            X = X + noise  
+            return X
         else:
             return X
 
-    @staticmethod
-    def get_epsilon(epoch, n_epochs):
-        epsilon = torch.clamp(torch.Tensor([1 - 1.33333333*epoch/n_epochs]), min=0, max=1)
-        return epsilon
+    def update_epsilon(self, epoch, n_epochs):
+        epsilon = 1 - 1.33333333*epoch/n_epochs
+        epsilon = np.clip(epsilon, 0, 1)
+        self.epsilon = epsilon
 
 
 def p_flip_ann(epoch, n_epochs):
@@ -77,10 +75,10 @@ def set_train(*models):
     for model in models:
         model.train()
 
+
 def set_eval(*models):
     for model in models:
         model.eval()
-
 
 
 def KL_loss(mu, logvar):
@@ -157,70 +155,50 @@ def plot_images(X, E, G, n_z, epoch):
     plt.close(fig)
 
 
-def plot_grid(n_z, E, G, Z_plot, epoch, n_images=6):
-    img_list_p = []
-    img_list_tilde = []
-    img_list_data = []
+class Plot_Images():
+    def __init__(self, X_full, n_z, grid_length=6, recon_path=RECON_PATH, fake_path=FAKE_PATH):
+        self.grid_length = grid_length
+        idx = np.random.randint(0, X_full.shape[0], int((grid_length**2)/2))
+        self.X = X_full[idx, ...].cuda()
+        self.Z = torch.randn(grid_length**2, n_z).cuda().view(grid_length**2, n_z, 1, 1)
+        self.recon_path = recon_path
+        self.fake_path = fake_path
+        self.H = X_full.shape[-1]
+        self.W = X_full.shape[-2]
 
-    transform = torchvision.transforms.Compose([
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize(mean=[0.5], std=[0.5])
-    ])
-    data = MiraBest_full(DATA_PATH, train=True, transform=transform, download=True)
+    def plot(self, path):
+        img_list = list(self.img_array)
+        assert self.grid_length == int(len(img_list)**0.5)
+        fig = plt.figure(figsize=(13., 13.))
+        grid = ImageGrid(fig, 111,
+                         nrows_ncols=(self.grid_length, self.grid_length),
+                         axes_pad=0)
 
-    Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)
+        for ax, im in zip(grid, img_list):
+            im = im.reshape((self.H, self.W))
+            ax.axis('off')
+            ax.imshow(im, cmap='hot')
+        plt.axis('off')
+        plt.savefig(path, bbox_inches='tight')
+        plt.close(fig)
 
-    ## list of randomly generated images ##
-    for i in range(n_images**2):
-        z = Z_plot[i].view(1, n_z, 1, 1)
-        X_p = G(z).cpu().detach().view(150, 150)
-        img_list_p.append(X_p)
+    def generate(self, E, G, recon=False):
+        if recon:
+            Z = E(self.X)[0]
+            X_recon = G(Z).detach().cpu().numpy()
+            X = np.concatenate((X_recon, self.X.detach().cpu().numpy()), axis=0)
+        else:
+            X = G(self.Z).view(-1, self.H, self.W).detach().cpu().numpy()
+        
+        self.img_array = X
 
-    ## generate reconstructed image list ##
-    for i in range(int(n_images**2/2)):
-        X = data.__getitem__(i)[0].cuda().view(1, 1, 150, 150)
-        z = E(X)[0].view(1, n_z, 1, 1)
-        X_tilde = G(z).cpu().detach().view(150, 150)
-        img_list_tilde.append(X_tilde.cpu().detach().view(150, 150))
-        img_list_data.append(X.cpu().detach().view(150, 150))
-
-    img_list_joined = img_list_tilde + img_list_data
-
-    fig = plt.figure(figsize=(13., 13.))
-    grid = ImageGrid(fig, 111,  # similar to subplot(111)
-                     nrows_ncols=(n_images, n_images),  # creates 2x2 grid of axes
-                     axes_pad=0,  # pad between axes in inch.
-                     )
-
-    for ax, im in zip(grid, img_list_p):
-        ax.imshow(im, cmap='hot')
-    #plt.title('generated images epoch {}'.format(epoch))
-    plt.savefig(FAKE_PATH + f'/grid_X_p_{epoch+1}.pdf')
-    plt.close(fig)
-
-    fig = plt.figure(figsize=(13., 13.))
-    grid = ImageGrid(fig, 111,  # similar to subplot(111)
-                     nrows_ncols=(n_images, n_images),  # creates 2x2 grid of axes
-                     axes_pad=0,  # pad between axes in inch.
-                     )
-
-    for ax, im in zip(grid, img_list_joined):
-        ax.imshow(im, cmap='hot')
-    plt.savefig(RECON_PATH + f'/grid_X_tilde_{epoch+1}.pdf')
-    plt.close(fig)
-
-
-def y_collapsed(y):
-    """
-    DEPRECATED
-    """
-    fri = torch.full((y.shape[0],), 0, dtype=torch.long)
-    frii = torch.full((y.shape[0],), 1, dtype=torch.long)
-    hybrid = torch.full((y.shape[0],), 2, dtype=torch.long)
-    y = torch.where(y > 4.5, y, fri)
-    y = torch.where((y < 4.5) | (y > 7.5), y, frii)
-    y = torch.where(y < 7.5, y, hybrid)
-    return y
+    def plot_generate(self, E, G, filename='images.pdf', recon=False):
+        self.generate(E, G, recon=recon)
+        if recon:
+            path = os.path.join(self.recon_path, filename)
+        else:
+            path = os.path.join(self.fake_path, filename)
+        self.plot(path)
 
 
 def set_requires_grad(network, bool_val):

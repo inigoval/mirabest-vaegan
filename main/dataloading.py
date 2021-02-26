@@ -309,7 +309,7 @@ def choose_label(dset, label):
     dset.targets = targets
 
 
-def load_data(batch_size, label=1, seed=69, reduce=False, fraction=0.5, array=False, fid_sample_size=10000):
+def load_data(batch_size, label=1, seed=69, fraction=1, tensor=False, fid_sample_size=10000):
     """
     Load data using Mirabest class
     """
@@ -333,12 +333,11 @@ def load_data(batch_size, label=1, seed=69, reduce=False, fraction=0.5, array=Fa
     choose_label(test_data, label)
 
     # Subset the training set, keep the test set the same.
-    if reduce:
-        train_data = subset(train_data, fraction)
-        # test_data = subset(test_data, fraction)
+    if fraction < 1:
+        train_data = subset(train_data, fraction, seed=seed)
 
    # Load the full augmented dataset for FID evaluation
-    if array:
+    if tensor:
         all_data = torch.utils.data.ConcatDataset((train_data, test_data))
         loader = torch.utils.data.DataLoader(all_data, batch_size=len(all_data), shuffle=True)
 
@@ -359,5 +358,7 @@ def load_data(batch_size, label=1, seed=69, reduce=False, fraction=0.5, array=Fa
 
         trainLoader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
         testLoader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=True)
+
+        print(len(trainLoader))
 
         return trainLoader, testLoader, n_test
