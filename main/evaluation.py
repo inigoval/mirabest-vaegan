@@ -56,6 +56,11 @@ class FID():
         sigma = np.cov(fid_layer, rowvar=False)
         return mu, sigma
 
+    @staticmethod
+    def generate(G, n_z, n_samples=1000):
+        Z = torch.randn((n_samples, n_z)).view(n_samples, n_z, 1, 1).cuda()
+        X = G(Z)
+        return X
 
 def dset_array(cuda=False):
     """

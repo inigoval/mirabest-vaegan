@@ -9,7 +9,7 @@ import os
 from networks import enc, dec, disc, I
 from utilities import add_noise, p_flip_ann, labels, KL_loss, z_sample, plot_losses, plot_images, parse_config, set_train, set_eval, Plot_Images
 from dataloading import load_data
-from evaluation import compute_mu_sig, test_prob, ratio, plot_eval_dict, generate, FID
+from evaluation import compute_mu_sig, test_prob, ratio, plot_eval_dict, FID
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -54,8 +54,8 @@ BCE_loss = nn.BCELoss(reduction='mean')
 ## initialise parameters ##
 batch_size = 32
 n_z = 32
-n_epochs = 1500
-n_cycles = 1
+n_epochs = 800
+n_cycles = 5
 gamma = 1  # weighting for style (L_llike) in generator loss function
 fraction = 0.5
 # smoothing parameters
@@ -88,7 +88,6 @@ I = torch.load(EVAL_PATH + '/I.pt').cpu().eval()
 
 # Load full datasets for evaluation
 X_full, y_full = load_data(batch_size, label=label, tensor=True, fraction=fraction)
-
 
 # Initialise random Z 
 Z_plot = Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)
@@ -178,9 +177,9 @@ for epoch in range(n_epochs):
             y_gen += y_X_p.mean().item()  
 
             ## VAE loss ##
-            D_l_real = D(X_noisey)[1]
+            _, D_l_real = D(X_noisey)
             L_G_llike = MSE_loss(D_l_real, D_l_recon)*gamma 
-            L_G_llike.backward()            
+            L_G_llike.backward(retain_graph=True)            
 
             ## Sum gradients and step optimizer##
             L_G = (L_G_fake + L_G_recon)/2 + L_G_llike
@@ -229,12 +228,12 @@ for epoch in range(n_epochs):
         plot_images(X, E, G, n_z, epoch)
 
         # Generate a set of fake images for evaluation
-        X_fake = generate(G, n_z, n_samples=1000).cpu()
+        X_fake = Frechet.generate(G, n_z, n_samples=1000).cpu()
 
         fid = Frechet.calculate_fid(X_fake)
         eval_dict['n_samples'][epoch] = samples
         eval_dict['fid'][epoch] = fid
-        eval_dict['D_X_test'][epoch] = test_prob(D.eval(), testLoader, n_test, Noise)
+        eval_dict['D_X_test'][epoch] = test_prob(D, testLoader, n_test, Noise)
         eval_dict['fri%'][epoch] = ratio(X_fake, I)
 
         plot_eval_dict(eval_dict, epoch)
@@ -245,15 +244,13 @@ for epoch in range(n_epochs):
         if fid < best_fid:
             print('Model saved')
             best_fid = int(fid)
-
             Grid_Plot.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
-
             Grid_Plot.plot_generate(E, G, filename=f'grid_X_fake_{epoch+1}.pdf', recon=False)
 
             torch.save({'epoch': epoch,
-                    'G': G.state_dict(),
-                        'E': E.state_dict(),
-                        'FID': fid,
-                        }, CHECKPOINT_PATH + f'/model_dict_fr{label+1}_e{epoch+1}_fid{int(fid)}.pt')
+                       'G': G.state_dict(),
+                       'E': E.state_dict(),
+                       'FID': fid,},
+                       CHECKPOINT_PATH + f'/model_dict_fr{label+1}_e{epoch+1}_fid{int(fid)}.pt')
 
 
