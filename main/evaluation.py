@@ -62,6 +62,7 @@ class FID():
         X = G(Z)
         return X
 
+
 def dset_array(cuda=False):
     """
     DEPRECATED

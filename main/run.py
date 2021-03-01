@@ -5,6 +5,7 @@ import time
 import torch.nn as nn
 import numpy as np
 import os
+import glob
 
 from networks import enc, dec, disc, I
 from utilities import add_noise, p_flip_ann, labels, KL_loss, z_sample, plot_losses, plot_images, parse_config, set_train, set_eval, Plot_Images
@@ -31,6 +32,7 @@ EMBEDDING_PATH_FAKE = os.path.join(EMBEDDING_PATH, 'fake')
 path_list = [FILE_PATH, EVAL_PATH, DATA_PATH, CHECKPOINT_PATH, FIG_PATH,
              IMAGE_PATH, EMBEDDING_PATH, FAKE_PATH, RECON_PATH, EMBEDDING_PATH_FAKE,
              EMBEDDING_PATH_REAL]
+
 
 # Create any directories that don't exist
 for path in path_list:
@@ -125,24 +127,19 @@ for epoch in range(n_epochs):
             #if i == 2:
             #   break
 
-            # check X is normalised properly
+            # Check X is normalised properly
             if torch.max(X.pow(2)) > 1:
-                print('overflow')
+                print('Pixel above magnitude 1, data may not be normalised correctly')
 
             ones, zeros = labels(label_flip, smoothing, p_flip, smoothing_scale, n_X)
            
-            # Add noise to data (ready for discriminator input)
-            X_noisey = Noise(X)
-
             # Encode data point and reconstruct from latent space
             mu, logvar = E(X.detach())
             X_tilde = G(z_sample(mu.detach(), logvar.detach()))
-            X_tilde = Noise(X_tilde)
 
             # Generate random data point
             Z = torch.randn_like(mu)
             X_p = G(Z)
-            X_p = Noise(X_p)
 
             ############################################
             ########### update discriminator ###########
@@ -150,9 +147,9 @@ for epoch in range(n_epochs):
             D_opt.zero_grad()
 
             # Calculate gradients
-            L_D_real = D.backprop(X_noisey, ones, BCE_loss, retain_graph=True)
-            L_D_fake = D.backprop(X_p.detach(), zeros, BCE_loss, retain_graph=True)
-            L_D_recon = D.backprop(X_tilde.detach(), zeros, BCE_loss)
+            L_D_real = D.backprop(Noise(X), ones, BCE_loss, retain_graph=True)
+            L_D_fake = D.backprop(Noise(X_p).detach(), zeros, BCE_loss, retain_graph=True)
+            L_D_recon = D.backprop(Noise(X_tilde).detach(), zeros, BCE_loss)
 
             ## Combine gradients and step optimizer ##
             L_D = (L_D_real + L_D_fake + L_D_recon)/3
@@ -164,22 +161,23 @@ for epoch in range(n_epochs):
             G_opt.zero_grad()
 
             ## Reconstructed batch ##
-            y_X_tilde, D_l_recon = D(X_tilde)
+            y_X_tilde, _ = D(Noise(X_tilde))
             y_X_tilde = y_X_tilde.view(-1)
             L_G_recon = G.backprop(y_X_tilde, ones, BCE_loss)
             # Average and save output probability
             y_recon += y_X_tilde.mean().item()
 
             ## Fake batch ##
-            y_X_p = D(X_p)[0].view(-1)
+            y_X_p = D(Noise(X_p))[0].view(-1)
             L_G_fake = G.backprop(y_X_p, ones, BCE_loss)
             # Average and save output probability
             y_gen += y_X_p.mean().item()  
 
             ## VAE loss ##
-            _, D_l_real = D(X_noisey)
+            _, D_l_recon = D(X_tilde)
+            _, D_l_real = D(X)
             L_G_llike = MSE_loss(D_l_real, D_l_recon)*gamma 
-            L_G_llike.backward(retain_graph=True)            
+            L_G_llike.backward()            
 
             ## Sum gradients and step optimizer##
             L_G = (L_G_fake + L_G_recon)/2 + L_G_llike
@@ -199,6 +197,7 @@ for epoch in range(n_epochs):
             # Forward passes to generate feature maps
             X_tilde = G(z_sample(mu, logvar))
             _, D_l_recon = D(X_tilde)
+            _, D_l_real = D(X)
             L_E_llike = MSE_loss(D_l_real, D_l_recon)
             L_E_llike.backward()
 
