@@ -161,7 +161,8 @@ for epoch in range(n_epochs):
             G_opt.zero_grad()
 
             ## Reconstructed batch ##
-            y_X_tilde, _ = D(Noise(X_tilde))
+            X_tilde = G(z_sample(mu.detach(), logvar.detach()))
+            y_X_tilde, D_l_recon = D(Noise(X_tilde))
             y_X_tilde = y_X_tilde.view(-1)
             L_G_recon = G.backprop(y_X_tilde, ones, BCE_loss)
             # Average and save output probability
@@ -174,12 +175,11 @@ for epoch in range(n_epochs):
             y_gen += y_X_p.mean().item()  
 
             ## VAE loss ##
-            _, D_l_recon = D(X_tilde)
-            _, D_l_real = D(X)
+            _, D_l_real = D(Noise(X))
             L_G_llike = MSE_loss(D_l_real, D_l_recon)*gamma 
             L_G_llike.backward()            
 
-            ## Sum gradients and step optimizer##
+            ## Sum gradients and step optimizer ##
             L_G = (L_G_fake + L_G_recon)/2 + L_G_llike
             G_opt.step()
 
@@ -196,8 +196,8 @@ for epoch in range(n_epochs):
             ## llike loss ##
             # Forward passes to generate feature maps
             X_tilde = G(z_sample(mu, logvar))
-            _, D_l_recon = D(X_tilde)
-            _, D_l_real = D(X)
+            _, D_l_recon = D(Noise(X_tilde))
+            _, D_l_real = D(Noise(X))
             L_E_llike = MSE_loss(D_l_real, D_l_recon)
             L_E_llike.backward()
 
@@ -207,7 +207,7 @@ for epoch in range(n_epochs):
 
             iterations = i
 
-    ## insert cumulative losses into dictionary ##
+    ## Insert cumulative losses into dictionary ##
     L_dict['y_gen'][epoch] = y_gen/(iterations*n_cycles)
     L_dict['y_recon'][epoch] = y_recon/(iterations*n_cycles)
 

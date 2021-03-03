@@ -178,7 +178,7 @@ def plot_eval_dict(eval_dict, epoch):
     ax1.plot(x_plot[:epoch], FID[:epoch], label='frechet distance')
     ax1.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
     # ax1.set_xticklabels([f'{t:.3e}' for t in ax1.get_yticks()])
-    ax1.set_ylim(0, 700)
+    ax1.set_ylim(0, 1500)
 
     ax2 = ax1.twinx()
     color = 'tab:red'

@@ -92,7 +92,6 @@ def z_sample(mu, logvar):
     std = logvar.exp().pow(0.5)
     epsilon = torch.randn_like(std)  # returns tensor same size as std but mean 0 var 1
     z_tilde = torch.add(mu, torch.mul(epsilon, std))
-    # print(z_tilde.requires_grad)
     assert z_tilde.size() == mu.size()
     return z_tilde
 

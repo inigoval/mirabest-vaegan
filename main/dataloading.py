@@ -359,6 +359,4 @@ def load_data(batch_size, label=1, seed=69, fraction=1, tensor=False, fid_sample
         trainLoader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
         testLoader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=True)
 
-        print(len(trainLoader))
-
         return trainLoader, testLoader, n_test
