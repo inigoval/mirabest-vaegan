@@ -4,18 +4,17 @@ import torchvision.transforms as transforms
 import torch
 import torch.nn as nn
 import os
+from utilities import load_config
 
-# latent vector length
-n_z = 32
+config = load_config()
 
-# feature map sizes
-n_ef = 16
-n_gf = 16
-n_df = 16
+n_z = config['model']['n_z']
+n_ef = config['model']['n_ef']
+n_gf = config['model']['n_gf']
+n_df = config['model']['n_df']
 
-# number of channels
-n_channels = 1
-batch_size = 32
+n_channels = config['model']['n_channels']
+batch_size = config['model']['batch_size']
 
 
 class enc(nn.Module):
@@ -76,13 +75,14 @@ class enc(nn.Module):
         return mu, logvar
 
 
-class dec(nn.Module):
-    # conv1 (n_z, 1, 1)   ->  (256, 5, 5)
-    # conv2 (256, 5, 5)   ->  (128, 12, 12)
-    # conv3 (128, 12, 12)   ->  (64, 22, 22)
-    # conv4 (64, 22, 22)  ->  (32, 40 ,40)
-    # conv5 (32, 40, 40)  ->  (16, 76, 76)
-    # conv6 (16, 76, 76)  ->  (1, 150, 150)
+class dec_conv(nn.Module):
+    # conv1 (n_z, 1, 1)   ->  (512, 5, 5)
+    # conv2 (512, 5, 5)   ->  (256, 8, 8)
+    # conv3 (256, 8, 8)   ->  (128, 12, 12)
+    # conv4 (128, 12, 12)   ->  (64, 22, 22)
+    # conv5 (64, 22, 22)  ->  (32, 40 ,40)
+    # conv6 (32, 40, 40)  ->  (16, 76, 76)
+    # conv7 (16, 76, 76)  ->  (1, 150, 150)
     def __init__(self):
         super(dec, self).__init__()
         self.conv1 = nn.Sequential(
@@ -127,6 +127,76 @@ class dec(nn.Module):
         x = self.conv5(x)
         x = self.conv6(x)
         x = self.conv7(x).view(-1, 1, 150, 150)
+        return x
+
+    def backprop(self, y_pred, y ,loss, retain_graph=True):
+        """
+        Pass a tuple of tuples with each tuple of form (X, y, loss) 
+        """
+        L = loss(y_pred, y)
+        L.backward(retain_graph=retain_graph)
+        return L
+
+
+class dec(nn.Module):
+    # up1 (n_z, 1, 1)   ->  (512, 5, 5)
+    # up2 (512, 5, 5)   ->  (256, 8, 8)
+    # up3 (256, 8, 8)   ->  (128, 12, 12)
+    # up4 (128, 12, 12)   ->  (64, 22, 22)
+    # up5 (64, 22, 22)  ->  (32, 40 ,40)
+    # up6 (32, 40, 40)  ->  (16, 76, 76)
+    # up7 (16, 76, 76)  ->  (1, 150, 150)
+    def __init__(self):
+        super(dec, self).__init__()
+        self.up1 = nn.Sequential(
+            nn.Upsample(size=(5,5), mode='nearest'),
+            nn.Conv2d(n_z, n_gf*32, 5, 1, 2, bias=False),
+            nn.BatchNorm2d(n_gf*32),
+            nn.LeakyReLU(0.2, inplace=True))
+
+        self.up2 = nn.Sequential(
+            nn.Upsample(size=(8,8), mode='nearest'),
+            nn.Conv2d(n_gf*32, n_gf*16, 5, 1, 2, bias=False),
+            nn.BatchNorm2d(n_gf*16),
+            nn.LeakyReLU(0.2, inplace=True))
+
+        self.up3 = nn.Sequential(
+            nn.Upsample(size=(12,12), mode='nearest'),
+            nn.Conv2d(n_gf*16, n_gf*8, 5, 1, 2, bias=False),
+            nn.BatchNorm2d(n_gf*8),
+            nn.LeakyReLU(0.2, inplace=True))
+
+        self.up4 = nn.Sequential(
+            nn.Upsample(size=(22,22), mode='nearest'),
+            nn.ConvTranspose2d(n_gf*8, n_gf*4, 5, 1, 2, bias=False),
+            nn.BatchNorm2d(n_gf*4),
+            nn.LeakyReLU(0.2, inplace=True))
+
+        self.up5 = nn.Sequential(
+            nn.Upsample(size=(40,40), mode='nearest'),
+            nn.ConvTranspose2d(n_gf*4, n_gf*2, 5, 1, 2, bias=False),
+            nn.BatchNorm2d(n_gf*2),
+            nn.LeakyReLU(0.2, inplace=True))
+
+        self.up6 = nn.Sequential(
+            nn.Upsample(size=(76,76), mode='nearest'),
+            nn.ConvTranspose2d(n_gf*2, n_gf, 5, 1, 2, bias=False),
+            nn.BatchNorm2d(n_gf),
+            nn.LeakyReLU(0.2, inplace=True))
+
+        self.up7 = nn.Sequential(
+            nn.Upsample(size=(150,150), mode='nearest'),
+            nn.Conv2d(n_gf, n_channels , 5, 1, 2, bias=False),
+            nn.Sigmoid())
+
+    def forward(self, z):
+        x = self.up1(z)
+        x = self.up2(x)
+        x = self.up3(x)
+        x = self.up4(x)
+        x = self.up5(x)
+        x = self.up6(x)
+        x = self.up7(x).view(-1, 1, 150, 150)
         return x
 
     def backprop(self, y_pred, y ,loss, retain_graph=True):

@@ -63,100 +63,88 @@ class FID():
         return X
 
 
-def dset_array(cuda=False):
-    """
-    DEPRECATED
-    """
-    ## load and normalise data ##
-    transform = torchvision.transforms.Compose([
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize(mean=[0], std=[1])
-    ])
-    train_data = MiraBest_full(DATA_PATH, train=True, transform=transform, download=True)
-    test_data = MiraBest_full(DATA_PATH, train=False, transform=transform, download=True)
-    all_data = torch.utils.data.ConcatDataset((train_data, test_data))
-    train_loader = torch.utils.data.DataLoader(all_data, batch_size=len(train_data), shuffle=True)
-    X, y = next(iter(train_loader))
-    if cuda:
-        return X.cuda(), y.cuda()
-    else:
-        return X.cpu(), y.cpu()
+class Eval():
+    def __init__(self, n_epochs):
+       self.epochs = np.arange(n_epochs) 
+       self.samples = np.zeros(n_epochs)
+       self.fid = np.zeros(n_epochs)
+       self.D_X_test = np.zeros(n_epochs)
+       self.ratio = np.zeros(n_epochs)
+       self.epsilon = np.zeros(n_epochs)
+       self.epoch = 0
+
+    def update_epoch(self, epoch):
+        self.epoch = epoch
+
+    def calc_overfitscore(self, D, testLoader, n_test, noise):
+        """ 
+        Evaluate the discriminator output for held out real samples (to detect overfitting)
+        A value close to 1 means close to no overfitting, a value close to zero implies
+        significant overfitting
+        """
+        D_sum = 0.
+        for data in testLoader:
+            X, _ = data
+            X = noise(X.cuda()).cuda()
+            D_X = D(X)[0].view(-1)
+            D_sum += torch.sum(D_X).item()
+        D_avg = D_sum/n_test
+        self.D_X_test[self.epoch] =  D_avg
+
+    def calc_ratio(self, X, I):
+        y = I(X)
+        _, y_pred = torch.max(y, 1)
+        n = y_pred.size()[0]
+        n_fri, n_frii = (y_pred == 0).sum().item(), (y_pred == 1).sum().item()
+        assert n_fri + n_frii == n
+        R = n_fri/n
+        self.ratio[self.epoch] = R*100
+
+    def plot_fid(self, eps=False, ylim=400):
+        x = self.epochs
+        fid = self.fid
+        epoch = self.epoch
+        epsilon = self.epsilon
+        
+        ## plot frechet inception distance ##
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel('n')
+        ax1.set_ylabel('FID')
+        ax1.plot(x[:epoch], fid[:epoch], label='frechet distance')
+        ax1.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+        # ax1.set_xticklabels([f'{t:.3e}' for t in ax1.get_yticks()])
+        ax1.set_ylim(0, ylim)
+        
+        if eps:
+            ax2 = ax1.twinx()
+            color = 'tab:red'
+            ax2.set_ylabel('epsilon', color=color)
+            ax2.plot(x[:epoch], epsilon[:epoch], '--', color='red')
+            ax2.tick_params(axis='y', labelcolor=color)
+        
+        fig.savefig(EVAL_PATH + '/frechet_distance_{ylim}.pdf')
+        plt.close(fig)
+
+    def plot_overfitscore(self):
+        x = self.epochs
+        epoch = self.epoch
+        D_X_test = self.D_X_test
+
+        fig, ax = plt.subplots(1, 1)
+        ax.plot(x[:epoch], D_X_test[:epoch], label='D(X_test)')
+        ax.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+        #ax.set_xticklabels([f'{t:.3e}' for t in ax.get_yticks()])
+        ax.set_xlabel('n')
+        ax.set_ylabel('D(X_test)')
+        ax.legend()
+        ax.set_ylim(0, 1)
+        fig.savefig(EVAL_PATH + '/overfitting_score.pdf')
+        plt.close(fig)
 
 
 def renormalize(X, mu=0.0031, std=0.0352):
     X = (X - mu)/std
     return X
-
-
-def generate(G, n_z, n_samples=1000):
-    Z = torch.randn((n_samples, n_z)).view(n_samples, n_z, 1, 1).cuda()
-    X = G(Z)
-    return X
-
-
-def inception_score(I, X, eps=1E-10):
-    # normalise X for CNN evaluation
-    # X = renormalize(X)
-    p_yx = I(X)
-    p_y = torch.mean(p_yx, 0).view(1, -1)
-    p_y = p_y.expand(X.size()[0], -1)
-    KL = torch.mean(p_yx * torch.log(p_yx + eps) - torch.log(p_y + eps)).detach().cpu().numpy()
-    # squeeze inception score between 0 and 1
-    # IS = KL/3
-    IS = np.exp((KL-2))
-    return IS
-
-
-def compute_mu_sig(I, data):
-    """
-    Compute the FID (hidden) layer mean and covariance for given data
-    """
-    _ = I(data)
-    fid_layer = I.fid_layer.detach().cpu().numpy()
-    mu = np.mean(fid_layer, axis=0)
-    sigma = np.cov(fid_layer, rowvar=False)
-    return mu, sigma
-
-
-def fid(I, mu_real, sigma_real, X):
-    # X_gen, X_real = renormalize(X_gen).cpu(), renormalize(X_real).cpu()
-    mu_gen, sigma_gen = compute_mu_sig(I, X)
-
-    S = sqrtm((np.dot(sigma_gen, sigma_real)))
-
-    if np.iscomplexobj(S):
-        S = S.real
-
-    Dmu = np.square(mu_gen - mu_real).sum()
-
-    fid = Dmu + np.trace((sigma_gen + sigma_real - 2*S), axis1=0, axis2=1)
-    return fid
-
-
-def test_prob(D, testLoader, n_test, add_noise):
-    """ 
-    Evaluate the discriminator output for held out real samples (to detect overfitting)
-    A value close to 1 means close to no overfitting, a value close to zero implies
-    significant overfitting
-    """
-    D_sum = 0.
-    for data in testLoader:
-        X, _ = data
-        X = add_noise(X.cuda()).cuda()
-        D_X = D(X)[0].view(-1)
-        D_sum += torch.sum(D_X).item()
-    D_avg = D_sum/n_test
-    return D_avg
-
-
-def ratio(X, I):
-    y = I(X)
-    _, y_pred = torch.max(y, 1)
-    n = y_pred.size()[0]
-    n_fri, n_frii = (y_pred == 0).sum().item(), (y_pred == 1).sum().item()
-    assert n_fri + n_frii == n
-    R = n_fri/n
-    return R*100
 
 
 def class_idx(y):
