@@ -11,7 +11,7 @@ import yaml
 from pathlib import Path
 
 from networks import enc, dec, disc, I
-from utilities import Annealed_Noise, Plot_Images, Labels 
+from utilities import Annealed_Noise, Plot_Images, Labels, Set_Model
 from utilities import z_sample, KL_loss, load_config
 from evaluation import FID, Eval
 from dataloading import load_data
@@ -57,9 +57,10 @@ L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': to
           'L_D': torch.zeros(n_epochs), 'y_gen': torch.zeros(n_epochs), 'y_recon': torch.zeros(n_epochs)}
 
 
-# load inception model
+# Load inception model
 I = torch.load(path_dict['eval'] / 'I.pt').cpu().eval()
-# load full datasets for plotting latent space #
+
+# Load full dataset as tensor #
 X_full, y_full = load_data(batch_size, label=label, reduce=True, array=True)
 
 samples = 0
@@ -79,7 +80,7 @@ for epoch in range(n_epochs):
     noise.update_epsilon(epoch)
     eval.epsilon[epoch] = noise.epsilon
 
-    D.train()
+    Set_Model.train(E, G, D)
     L_E_cum, L_G_cum, L_D_cum = 0, 0, 0
     y_recon, y_gen = 0, 0
 
@@ -92,7 +93,7 @@ for epoch in range(n_epochs):
             
             # Skip training (use to quickly test code) #
             if skip: 
-                if i == 3:
+                if i == 2:
                     break
 
             # Check X is normalised properly
@@ -167,9 +168,9 @@ for epoch in range(n_epochs):
             y_gen += y_X_p.mean().item()  # average and save output probability
 
             ## VAE loss ##
-            _, D_l_real = D(X)
-            L_G_llike = MSE_loss(D_l_real, D_l_recon)*gamma 
-            L_G_llike.backward()            
+            D_l_X = D(noise(X))[1]
+            L_G_llike = MSE_loss(D_l_X, D_l_X_tilde)*gamma
+            L_G_llike.backward()
 
             ## Sum gradients and step optimizer ##
             L_G = (L_G_fake + L_G_recon)/2 + L_G_llike
@@ -188,9 +189,9 @@ for epoch in range(n_epochs):
             ## llike loss ##
             # Forward passes to generate feature maps
             X_tilde = G(z_sample(mu, logvar))
-            _, D_l_recon = D(X_tilde)
-            _, D_l_real = D(X)
-            L_E_llike = MSE_loss(D_l_real, D_l_recon)
+            _, D_l_X_tilde = D(noise(X_tilde))
+            _, D_l_X = D(noise(X))
+            L_E_llike = MSE_loss(D_l_X, D_l_X_tilde)
             L_E_llike.backward()
 
             ## Sum losses and step optimizer ##
@@ -204,6 +205,7 @@ for epoch in range(n_epochs):
     L_dict['y_recon'][epoch] = y_recon/(iterations*n_cycles)
 
     with torch.no_grad():
+        Set_Model.eval(E, G, D)
         ## Plot image grid ##
         if (epoch+1) % 10 == 0:
             im_grid.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
@@ -242,4 +244,4 @@ for epoch in range(n_epochs):
                         'FID': score,
                         }, path_dict['checkpoints'] / f'model_dict_fr{label+1}_e{epoch+1}_fid{int(score)}.pt')
 
-        print(f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score:.3f}  |  best: {best_fid:.1f}')
+        print(f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score:.3f}  |  best: {best_fid:.1f} (epoch {epoch+1})')

@@ -172,10 +172,32 @@ def set_requires_grad(network, bool_val):
         p.requires_grad = bool_val
 
 
-def weights_init(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv') != -1:
-        nn.init.normal_(m.weight.data, 0.0, 0.02)
-    elif classname.find('BatchNorm') != -1:
-        nn.init.normal_(m.weight.data, 1.0, 0.02)
-        nn.init.constant_(m.bias.data, 0)
+class Set_Model():
+    def __init__(self):
+        pass
+    
+    @staticmethod
+    def train(*models):
+        for model in models:
+            model.train()
+
+    @staticmethod
+    def eval(*models):
+        for model in models:
+            model.eval()
+
+    @staticmethod
+    def requires_grad(bool_val, *models):
+        for model in models:
+            for p in model.parameters():
+                p.requires_grad = bool_val
+
+    @staticmethod
+    def weights_init(*models):
+        for m in models:
+            classname = m.__class__.__name__
+            if classname.find('Conv') != -1:
+                nn.init.normal_(m.weight.data, 0.0, 0.02)
+            elif classname.find('BatchNorm') != -1:
+                nn.init.normal_(m.weight.data, 1.0, 0.02)
+                nn.init.constant_(m.bias.data, 0)
