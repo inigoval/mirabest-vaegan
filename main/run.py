@@ -9,7 +9,7 @@ import glob
 import yaml
 
 from networks import enc, dec, disc, I
-from utilities import load_config
+from utilities import Annealed_Noise, load_config
 from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
 from utilities import plot_images, KL_loss, plot_grid, y_collapsed, eps_noise
 from dataloading import load_data
@@ -44,23 +44,6 @@ for path in path_list:
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 cuda = torch.device('cuda')
-
-config = load_config()
-
-## Load parameters from config ##
-batch_size = config['data']['batch_size']
-fraction = config['data']['fraction']
-
-n_z = config['model']['n_z']
-
-n_epochs = config['training']['n_epochs']
-n_cycles = config['training']['n_cycles']
-gamma = config['training']['gamma']  
-noise_scale = config['training']['noise_scale']
-p_flip = config['training']['p_flip']
-label = config['training']['label']
-lr = config['training']['lr']
-
 
 config = load_config()
 
@@ -113,7 +96,8 @@ I = torch.load(EVAL_PATH + '/I.pt').cpu().eval()
 # Load full datasets for evaluation
 X_full, y_full = load_data(batch_size, label=label, tensor=True, fraction=fraction)
 
-# Initialise some metrics
+# initialise noise for grid images so that latent vector is same every time
+Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)
 samples = 0
 best_fid = 100 
 
@@ -126,16 +110,16 @@ labels = Labels(p_flip)
 eval = Eval(n_epochs)
 
 
+# Initialise classes
+noise = Annealed_Noise(noise_scale, n_epochs)
+
 for epoch in range(n_epochs):
-
-    # Set models to train mode #
-    Set_Model.train(E, G, D)
-
+    
     # Update annealed noise amplitude #
-    noise.update_epsilon(epoch, n_epochs)
-    eval.epsilon[epoch] = noise.epsilon
+    noise.update_epsilon(epoch)
 
-    # Initialise metrics #
+    D.train()
+    L_E_cum, L_G_cum, L_D_cum = 0, 0, 0
     y_recon, y_gen = 0, 0
 
     for j in np.arange(n_cycles):
@@ -168,13 +152,35 @@ for epoch in range(n_epochs):
             ############################################
             D_opt.zero_grad()
 
-            # Calculate gradients
-            L_D_real = D.backprop(noise(X), ones, BCE_loss, retain_graph=True)
-            L_D_fake = D.backprop(noise(X_p).detach(), zeros, BCE_loss, retain_graph=True)
-            L_D_recon = D.backprop(noise(X_tilde).detach(), zeros, BCE_loss)
+            ## train with all real batch ##
+            y_X = D(noise(X))[0]
+            y_X = y_X.view(-1)
+            L_D_X = BCE_loss(y_X, ones)
+            L_D_X.backward()
 
-            ## Combine gradients and step optimizer ##
-            L_D = (L_D_real + L_D_fake + L_D_recon)/3
+            ## train with reconstructed batch ##
+            # decode data point and reconstruct from latent space
+            mu, logvar = E(X.detach())
+            X_tilde = G(z_sample(mu.detach(), logvar.detach()))
+            # pass through discriminator -> backprop loss
+            y_X_tilde = D(noise(X_tilde).detach())[0].view(-1)
+            L_D_X_tilde = BCE_loss(y_X_tilde, zeros)
+            L_D_X_tilde.backward()
+
+            ## train with random batch ##
+            # sample z from p(z) = N(0,1) -> generate X
+            Z = torch.randn_like(mu)
+            X_p = G(Z)
+            # pass through Discriminator -> backprop loss
+            y_X_p = D(noise(X_p).detach())[0].view(-1)
+            L_D_X_p = BCE_loss(y_X_p, zeros)
+            L_D_X_p.backward()
+
+            # sum gradients
+            L_D = (L_D_X + L_D_X_p + L_D_X_tilde)/3
+
+            # step optimizer
+            # if L_D > L_G:
             D_opt.step()
 
             ############################################
@@ -184,17 +190,21 @@ for epoch in range(n_epochs):
 
             ## Reconstructed batch ##
             X_tilde = G(z_sample(mu.detach(), logvar.detach()))
-            y_X_tilde, D_l_recon = D(noise(X_tilde))
+            # pass through Driminator -> backprop loss
+            y_X_tilde, D_l_X_tilde = D(noise(X_tilde))
             y_X_tilde = y_X_tilde.view(-1)
             L_G_recon = G.backprop(y_X_tilde, ones, BCE_loss)
             # Average and save output probability
             y_recon += y_X_tilde.mean().item()
 
-            ## Fake batch ##
+            ## train with random batch ##
+            # sample z from p(z) = N(0,1) -> generate X
+            X_p = G(Z)
+            # pass through Driminator -> backprop loss
             y_X_p = D(noise(X_p))[0].view(-1)
-            L_G_fake = G.backprop(y_X_p, ones, BCE_loss)
-            # Average and save output probability
-            y_gen += y_X_p.mean().item()  
+            L_G_X_p = BCE_loss(y_X_p, ones)
+            L_G_X_p.backward(retain_graph=True)
+            y_gen += y_X_p.mean().item()  # average and save output probability
 
             ## VAE loss ##
             _, D_l_real = D(X)

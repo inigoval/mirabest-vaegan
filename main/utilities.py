@@ -25,6 +25,30 @@ EMBEDDING_PATH = os.path.join(EVAL_PATH, 'embeddings')
 FAKE_PATH = os.path.join(IMAGE_PATH, 'fake')
 RECON_PATH = os.path.join(IMAGE_PATH, 'reconstructed')
 
+class Annealed_Noise():
+    """
+    Adds noise of a given amplitude to the input images X
+    Leave the last quarter of epochs to optimise without any noise
+    """
+    def __init__(self, noise_scale, n_epochs):
+        self.n_epochs = n_epochs
+        self.noise_scale = noise_scale
+        self.epsilon = 0
+
+    def __call__(self, X):
+        if self.noise_scale > 0:
+            noise = torch.randn_like(X)*self.epsilon*self.noise_scale
+            X = X + noise  
+            return X
+        else:
+            return X
+
+    def update_epsilon(self, epoch):
+        epsilon = 1 - 1.33333333*epoch/self.n_epochs
+        epsilon = np.clip(epsilon, 0, 1)
+        self.epsilon = epsilon
+
+
 def load_config(config_path=CFG_PATH):
     """
     Helper function to load config file
