@@ -34,6 +34,43 @@ class FID():
         self.I = I
         self.mu_real, self.sigma_real = self.compute_mu_sig(I, data)
 
+    def __call__(self, X_fake):
+        mu, sigma = self.compute_mu_sig(self.I, X_fake)
+
+        S = sqrtm((np.dot(sigma, self.sigma_real)))
+
+        if np.iscomplexobj(S):
+            S = S.real
+
+        Dmu = np.square(mu - self.mu_real).sum()
+
+        fid = Dmu + np.trace((sigma + self.sigma_real - 2*S), axis1=0, axis2=1)
+        self.fid = fid
+        return fid
+
+    @staticmethod
+    def compute_mu_sig(I, data):
+        _ = I(data)
+        fid_layer = I.fid_layer.detach().cpu().numpy()
+        mu = np.mean(fid_layer, axis=0)
+        sigma = np.cov(fid_layer, rowvar=False)
+        return mu, sigma
+
+    @staticmethod
+    def generate(G, n_z, n_samples=1000):
+        Z = torch.randn((n_samples, n_z)).view(n_samples, n_z, 1, 1).cuda()
+        X = G(Z)
+        return X
+
+
+def dset_array(cuda=False):
+    """
+    Initialise the class with classifier model and training data to use as reference
+    """
+    def __init__(self, I, data):
+        self.I = I
+        self.mu_real, self.sigma_real = self.compute_mu_sig(I, data)
+
     def calculate_fid(self, X_fake):
         mu, sigma = self.compute_mu_sig(self.I, X_fake)
 

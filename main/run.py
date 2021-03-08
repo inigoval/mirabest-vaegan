@@ -10,6 +10,7 @@ import yaml
 
 from networks import enc, dec, disc, I
 from utilities import Annealed_Noise, Plot_Images, load_config
+from evaluation import FID
 from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
 from utilities import plot_images, KL_loss, plot_grid, y_collapsed, eps_noise
 from dataloading import load_data
@@ -113,6 +114,7 @@ eval = Eval(n_epochs)
 # Initialise classes
 noise = Annealed_Noise(noise_scale, n_epochs)
 im_grid = Plot_Images(X_full, n_z)
+fid = FID(I, X_full)
 
 for epoch in range(n_epochs):
     
@@ -262,26 +264,24 @@ for epoch in range(n_epochs):
         # generate a set of fake images
         X_fake = generate(G, n_z, n_samples=1000).cpu()
 
-        FID = fid(I, mu_fid, sigma_fid, X_fake)
+        score = fid(X_fake)
         eval_dict['n_samples'][epoch] = samples
-        eval_dict['fid'][epoch] = FID
+        eval_dict['fid'][epoch] = score
         eval_dict['D_X_test'][epoch] = test_prob(D.eval(), testLoader, n_test, noise, noise_scale, epsilon)
         eval_dict['fri%'][epoch] = ratio(X_fake, I)
 
 
-        print(f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score:.3f}  |  best: {best_fid:.1f}')
+        print(f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score:.3f}')
 
         # Save generator/encoder weights if FID score is high
         if score < best_fid:
             print('Model saved')
             best_fid = int(score)
-            img_grid.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
-            img_grid.plot_generate(E, G, filename=f'grid_X_fake_{epoch+1}.pdf', recon=False)
-
+            plot_grid(n_z, E, G, Z_plot, epoch, n_images=6)
             torch.save({'epoch': epoch,
-                       'G': G.state_dict(),
-                       'E': E.state_dict(),
-                       'FID': score,},
-                       CHECKPOINT_PATH + f'/model_dict_fr{label+1}_e{epoch+1}_fid{int(score)}.pt')
+                        'G': G.state_dict(),
+                        'E': E.state_dict(),
+                        'FID': score,
+                        }, CHECKPOINT_PATH + f'/model_dict_fr{label+1}_e{epoch+1}_fid{int(score)}.pt')
 
 
