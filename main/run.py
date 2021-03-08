@@ -10,11 +10,11 @@ import yaml
 
 from networks import enc, dec, disc, I
 from utilities import Annealed_Noise, Plot_Images, load_config
-from evaluation import FID
-from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
-from utilities import plot_images, KL_loss, plot_grid, y_collapsed, eps_noise
-from dataloading import load_data
 from evaluation import FID, Eval
+from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
+from utilities import plot_images, KL_loss, y_collapsed
+from dataloading import load_data
+from evaluation import generate
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -89,38 +89,29 @@ BCE_loss = nn.BCELoss(reduction='mean')
 trainLoader, testLoader, n_test = load_data(batch_size, label=label, fraction=fraction)
 
 # assign dictionary to hold plotting values
-L_dict = {'x_plot': np.arange(n_epochs), 'y_gen': torch.zeros(n_epochs), 'y_recon': torch.zeros(n_epochs)}
+L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': torch.zeros(n_epochs),
+          'L_D': torch.zeros(n_epochs), 'y_gen': torch.zeros(n_epochs), 'y_recon': torch.zeros(n_epochs)}
 
 
 # Load pretrained classifier model
 I = torch.load(EVAL_PATH + '/I.pt').cpu().eval()
 
-# Load full datasets for evaluation
-X_full, y_full = load_data(batch_size, label=label, tensor=True, fraction=fraction)
-
 # initialise noise for grid images so that latent vector is same every time
 Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)
 samples = 0
-best_fid = 100 
-
-# Initialise classes
-noise = Annealed_Noise(noise_scale)
-img_grid = Plot_Images(X_full, n_z, grid_length=6)
-Epoch_Plot = Plot_Images(X_full, n_z, grid_length=2)
-fid = FID(I, X_full)
-labels = Labels(p_flip)
-eval = Eval(n_epochs)
-
+best_fid = 100
 
 # Initialise classes
 noise = Annealed_Noise(noise_scale, n_epochs)
 im_grid = Plot_Images(X_full, n_z)
 fid = FID(I, X_full)
+eval = Eval(n_epochs)
 
 for epoch in range(n_epochs):
     
     # Update annealed noise amplitude #
     noise.update_epsilon(epoch)
+    eval.epsilon[epoch] = noise.epsilon
 
     D.train()
     L_E_cum, L_G_cum, L_D_cum = 0, 0, 0
@@ -267,24 +258,30 @@ for epoch in range(n_epochs):
         # generate a set of fake images
         X_fake = generate(G, n_z, n_samples=1000).cpu()
 
+        ## Calculate and store metrics ##
         score = fid(X_fake)
-        eval_dict['n_samples'][epoch] = samples
-        eval_dict['fid'][epoch] = score
-        eval_dict['D_X_test'][epoch] = test_prob(D.eval(), testLoader, n_test, noise, noise_scale, epsilon)
-        eval_dict['fri%'][epoch] = ratio(X_fake, I)
+        eval.samples[epoch] = samples
+        eval.fid[epoch] = score
+        eval.calc_overfitscore(D, testLoader, n_test, noise)
+        eval.calc_ratio(X_fake, I)
 
+        ## Plot Metrics ##
+        eval.plot_fid(eps=True, ylim=1000)
+        eval.plot_fid(eps=False, ylim=400)
+        eval.plot_fid(eps=False, ylim=100)
+        eval.plot_overfitscore()
 
-        print(f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score:.3f}')
 
         # Save generator/encoder weights if FID score is high
         if score < best_fid:
             print('Model saved')
             best_fid = int(score)
-            plot_grid(n_z, E, G, Z_plot, epoch, n_images=6)
+            im_grid.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
+            im_grid.plot_generate(E, G, filename=f'grid_X_fake_{epoch+1}.pdf', recon=False)
             torch.save({'epoch': epoch,
                         'G': G.state_dict(),
                         'E': E.state_dict(),
                         'FID': score,
                         }, CHECKPOINT_PATH + f'/model_dict_fr{label+1}_e{epoch+1}_fid{int(score)}.pt')
 
-
+        print(f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score:.3f}  |  best: {best_fid:.1f}')

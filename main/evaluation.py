@@ -63,6 +63,85 @@ class FID():
         return X
 
 
+class Eval():
+    def __init__(self, n_epochs):
+       self.epochs = np.arange(n_epochs) 
+       self.samples = np.zeros(n_epochs)
+       self.fid = np.zeros(n_epochs)
+       self.D_X_test = np.zeros(n_epochs)
+       self.ratio = np.zeros(n_epochs)
+       self.epsilon = np.zeros(n_epochs)
+       self.epoch = 0
+
+    def update_epoch(self, epoch):
+        self.epoch = epoch
+
+    def calc_overfitscore(self, D, testLoader, n_test, noise):
+        """ 
+        Evaluate the discriminator output for held out real samples (to detect overfitting)
+        A value close to 1 means close to no overfitting, a value close to zero implies
+        significant overfitting
+        """
+        D_sum = 0.
+        for data in testLoader:
+            X, _ = data
+            X = noise(X.cuda()).cuda()
+            D_X = D(X)[0].view(-1)
+            D_sum += torch.sum(D_X).item()
+        D_avg = D_sum/n_test
+        self.D_X_test[self.epoch] =  D_avg
+
+    def calc_ratio(self, X, I):
+        y = I(X)
+        _, y_pred = torch.max(y, 1)
+        n = y_pred.size()[0]
+        n_fri, n_frii = (y_pred == 0).sum().item(), (y_pred == 1).sum().item()
+        assert n_fri + n_frii == n
+        R = n_fri/n
+        self.ratio[self.epoch] = R*100
+
+    def plot_fid(self, eps=False, ylim=400):
+        x = self.epochs
+        fid = self.fid
+        epoch = self.epoch
+        epsilon = self.epsilon
+        
+        ## plot frechet inception distance ##
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel('n')
+        ax1.set_ylabel('FID')
+        ax1.plot(x[:epoch], fid[:epoch], label='frechet distance')
+        ax1.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+        # ax1.set_xticklabels([f'{t:.3e}' for t in ax1.get_yticks()])
+        ax1.set_ylim(0, ylim)
+        
+        if eps:
+            ax2 = ax1.twinx()
+            color = 'tab:red'
+            ax2.set_ylabel('epsilon', color=color)
+            ax2.plot(x[:epoch], epsilon[:epoch], '--', color='red')
+            ax2.tick_params(axis='y', labelcolor=color)
+        
+        fig.savefig(EVAL_PATH + '/frechet_distance_{ylim}.pdf')
+        plt.close(fig)
+
+    def plot_overfitscore(self):
+        x = self.epochs
+        epoch = self.epoch
+        D_X_test = self.D_X_test
+
+        fig, ax = plt.subplots(1, 1)
+        ax.plot(x[:epoch], D_X_test[:epoch], label='D(X_test)')
+        ax.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+        #ax.set_xticklabels([f'{t:.3e}' for t in ax.get_yticks()])
+        ax.set_xlabel('n')
+        ax.set_ylabel('D(X_test)')
+        ax.legend()
+        ax.set_ylim(0, 1)
+        fig.savefig(EVAL_PATH + '/overfitting_score.pdf')
+        plt.close(fig)
+
+
 def dset_array(cuda=False):
     """
     Initialise the class with classifier model and training data to use as reference
