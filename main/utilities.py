@@ -167,11 +167,6 @@ def plot_losses(L_dict, epoch):
     plt.close(fig)
 
 
-def set_requires_grad(network, bool_val):
-    for p in network.parameters():
-        p.requires_grad = bool_val
-
-
 class Set_Model():
     def __init__(self):
         pass

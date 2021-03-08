@@ -65,6 +65,7 @@ X_full, y_full = load_data(batch_size, label=label, reduce=True, array=True)
 
 samples = 0
 best_fid = 100
+best_epoch = 1
 
 # Initialise classes
 noise = Annealed_Noise(noise_scale, n_epochs)
@@ -244,4 +245,4 @@ for epoch in range(n_epochs):
                         'FID': score,
                         }, path_dict['checkpoints'] / f'model_dict_fr{label+1}_e{epoch+1}_fid{int(score)}.pt')
 
-        print(f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score:.3f}  |  best: {best_fid:.1f} (epoch {epoch+1})')
+        print(f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score:.3f}  |  best: {best_fid:.1f} (epoch {best_epoch})')
