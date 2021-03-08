@@ -9,7 +9,7 @@ import glob
 import yaml
 
 from networks import enc, dec, disc, I
-from utilities import Annealed_Noise, load_config
+from utilities import Annealed_Noise, Plot_Images, load_config
 from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
 from utilities import plot_images, KL_loss, plot_grid, y_collapsed, eps_noise
 from dataloading import load_data
@@ -112,6 +112,7 @@ eval = Eval(n_epochs)
 
 # Initialise classes
 noise = Annealed_Noise(noise_scale, n_epochs)
+im_grid = Plot_Images(X_full, n_z)
 
 for epoch in range(n_epochs):
     
@@ -251,28 +252,21 @@ for epoch in range(n_epochs):
         # Set models to evaluation mode
         Set_Model.eval(E, G, D)
 
-        ## Plot image grid at regular intervals ##
+        ## Plot image grid ##
         if (epoch+1) % 10 == 0:
-            img_grid.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
-            img_grid.plot_generate(E, G, filename=f'grid_X_fake_{epoch+1}.pdf', recon=False)
+            im_grid.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
+            im_grid.plot_generate(E, G, filename=f'grid_X_fake_{epoch+1}.pdf', recon=False)
 
         plot_images(X, E, G, n_z, epoch)
 
-        # Generate a set of fake images and calculate FID #
-        X_fake = fid.generate(G, n_z, n_samples=1000).cpu()
-        score = fid.calculate_fid(X_fake)
+        # generate a set of fake images
+        X_fake = generate(G, n_z, n_samples=1000).cpu()
 
-        # Update metrics #
-        eval.samples[epoch] = samples
-        eval.fid[epoch] = score
-        eval.calc_overfitscore(D, testLoader, n_test, noise)
-        eval.calc_ratio(X_fake, I)
-
-        # Plot metrics #
-        eval.plot_fid( eps=True, ylim=1000)
-        eval.plot_fid(ylim=400)
-        eval.plot_fid(ylim=100)
-        eval.plot_overfitscore()
+        FID = fid(I, mu_fid, sigma_fid, X_fake)
+        eval_dict['n_samples'][epoch] = samples
+        eval_dict['fid'][epoch] = FID
+        eval_dict['D_X_test'][epoch] = test_prob(D.eval(), testLoader, n_test, noise, noise_scale, epsilon)
+        eval_dict['fri%'][epoch] = ratio(X_fake, I)
 
 
         print(f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score:.3f}  |  best: {best_fid:.1f}')

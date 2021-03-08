@@ -49,6 +49,55 @@ class Annealed_Noise():
         self.epsilon = epsilon
 
 
+class Plot_Images():
+    """
+    Class designed to plot image grids with the same latent vector/real image input
+    """
+    def __init__(self, X_full, n_z, grid_length=6, recon_path=RECON_PATH, fake_path=FAKE_PATH):
+        self.grid_length = grid_length
+        idx = np.random.randint(0, X_full.shape[0], int((grid_length**2)/2))
+        self.X = X_full[idx, ...].cuda()
+        self.Z = torch.randn(grid_length**2, n_z).cuda().view(grid_length**2, n_z, 1, 1)
+        self.recon_path = recon_path
+        self.fake_path = fake_path
+        self.H = X_full.shape[-1]
+        self.W = X_full.shape[-2]
+
+    def plot(self, path):
+        img_list = list(self.img_array)
+        assert self.grid_length == int(len(img_list)**0.5)
+        fig = plt.figure(figsize=(13., 13.))
+        grid = ImageGrid(fig, 111,
+                         nrows_ncols=(self.grid_length, self.grid_length),
+                         axes_pad=0)
+
+        for ax, im in zip(grid, img_list):
+            im = im.reshape((self.H, self.W))
+            ax.axis('off')
+            ax.imshow(im, cmap='hot')
+        plt.axis('off')
+        plt.savefig(path, bbox_inches='tight')
+        plt.close(fig)
+
+    def generate(self, E, G, recon=False):
+        if recon:
+            mu, logvar = E(self.X)
+            X_recon = G(mu).detach().cpu().numpy()
+            X = np.concatenate((X_recon, self.X.detach().cpu().numpy()), axis=0)
+        else:
+            X = G(self.Z).view(-1, self.H, self.W).detach().cpu().numpy()
+        
+        self.img_array = X
+
+    def plot_generate(self, E, G, filename='images.pdf', recon=False):
+        self.generate(E, G, recon=recon)
+        if recon:
+            path = os.path.join(self.recon_path, filename)
+        else:
+            path = os.path.join(self.fake_path, filename)
+        self.plot(path)
+
+
 def load_config(config_path=CFG_PATH):
     """
     Helper function to load config file
