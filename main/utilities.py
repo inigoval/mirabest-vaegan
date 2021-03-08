@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import os
-import ast
 import yaml
 
 from mpl_toolkits.axes_grid1 import ImageGrid
@@ -20,12 +19,28 @@ CFG_PATH = os.path.join(FILE_PATH, 'configs')
 CHECKPOINT_PATH = os.path.join(FILE_PATH, 'files', 'checkpoints')
 FIG_PATH = os.path.join(FILE_PATH, 'files', 'figs')
 IMAGE_PATH = os.path.join(FILE_PATH, 'files', 'images')
+CFG_PATH = os.path.join(FILE_PATH, 'config')
 
 EMBEDDING_PATH = os.path.join(EVAL_PATH, 'embeddings')
 FAKE_PATH = os.path.join(IMAGE_PATH, 'fake')
 RECON_PATH = os.path.join(IMAGE_PATH, 'reconstructed')
 
-class Annealed_Noise():
+def load_config(config_path=CFG_PATH):
+    """
+    Helper function to load config file
+    """
+    path = os.path.join(config_path, 'config.yml')
+    with open(path, "r") as ymlcfg:
+        cfg = yaml.load(ymlcfg, Loader=yaml.FullLoader)
+    return cfg
+
+
+def eps_noise(epoch, n_epochs):
+    epsilon = torch.clamp(torch.Tensor([1 - 1.33333333*epoch/n_epochs]), min=0, max=1)
+    return epsilon
+
+    
+def add_noise(bool_val, X, noise_scale, epsilon):
     """
     Adds noise of a given amplitude to the input images X
     Leave the last quarter of epochs to optimise without any noise

@@ -9,7 +9,9 @@ import glob
 import yaml
 
 from networks import enc, dec, disc, I
-from utilities import Annealed_Noise, Labels, Plot_Images, Set_Model, load_config, KL_loss, z_sample, plot_losses, plot_images
+from utilities import load_config
+from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
+from utilities import plot_images, KL_loss, plot_grid, y_collapsed, eps_noise
 from dataloading import load_data
 from evaluation import FID, Eval
 
@@ -59,6 +61,35 @@ p_flip = config['training']['p_flip']
 label = config['training']['label']
 lr = config['training']['lr']
 
+
+config = load_config()
+
+## Load parameters from config ##
+batch_size = config['data']['batch_size']
+fraction = config['data']['fraction']
+
+n_z = config['model']['n_z']
+
+n_epochs = config['training']['n_epochs']
+n_cycles = config['training']['n_cycles']
+gamma = config['training']['gamma']  
+noise_scale = config['training']['noise_scale']
+p_flip = config['training']['p_flip']
+label = config['training']['label']
+lr = config['training']['lr']
+
+## initialise parameters ##
+# smoothing parameters
+smoothing = False
+smoothing_scale = 0.12
+# discriminator noise parameters
+noise = True
+noise_scale = 0.35
+# label flipping
+label_flip = True
+# image grid plotting
+n_images = 6
+# 0 = fri 1 = frii
 
 ## initialise networks, losses and optimizers ##
 E, G, D = enc().cuda(), dec().cuda(), disc().cuda()

@@ -6,15 +6,18 @@ import torch.nn as nn
 import os
 from utilities import load_config
 
+from utilities import load_config
+
+## Load paramaters from config file ##
 config = load_config()
+
+n_channels = config['data']['n_channels']
+batch_size = config['data']['batch_size']
 
 n_z = config['model']['n_z']
 n_ef = config['model']['n_ef']
 n_gf = config['model']['n_gf']
 n_df = config['model']['n_df']
-
-n_channels = config['model']['n_channels']
-batch_size = config['model']['batch_size']
 
 
 class enc(nn.Module):

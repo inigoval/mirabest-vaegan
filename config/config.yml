@@ -1,0 +1,20 @@
+---
+data:
+    n_channels: 1                  # number of channels in the data
+    batch_size: 32                 # batch size for training
+    fraction: 0.5
+
+model:
+    n_z: 32                        # latent vector length
+    n_ef: 16                       # encoder feature map size
+    n_gf: 16                       # tenerator feature map size
+    n_df: 16                       # discriminator feature map size
+
+training:
+    n_epochs: 400
+    n_cycles: 10
+    gamma: 0.5                     # style parameter weights the VAE (llike) loss
+    noise_scale: 0.35              # annealed noise amplitude
+    p_flip: 0.05                   # probability of label flip
+    label: 0                       # label to generate, 0:fri 1:frii
+    lr: 0.0002                     # learning rate
