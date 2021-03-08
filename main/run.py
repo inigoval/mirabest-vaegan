@@ -9,12 +9,10 @@ import glob
 import yaml
 
 from networks import enc, dec, disc, I
-from utilities import Annealed_Noise, Plot_Images, load_config
+from utilities import Annealed_Noise, Plot_Images, Labels 
+from utilities import z_sample, plot_images, KL_loss, load_config
 from evaluation import FID, Eval
-from utilities import labels, z_sample, add_noise, plot_losses, p_flip_ann
-from utilities import plot_images, KL_loss, y_collapsed
 from dataloading import load_data
-from evaluation import generate
 
 # define paths for saving
 FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -88,7 +86,7 @@ BCE_loss = nn.BCELoss(reduction='mean')
 ## load and normalise data ##
 trainLoader, testLoader, n_test = load_data(batch_size, label=label, fraction=fraction)
 
-# assign dictionary to hold plotting values
+# Assign dictionary to hold plotting values
 L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': torch.zeros(n_epochs),
           'L_D': torch.zeros(n_epochs), 'y_gen': torch.zeros(n_epochs), 'y_recon': torch.zeros(n_epochs)}
 
@@ -96,8 +94,6 @@ L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': to
 # Load pretrained classifier model
 I = torch.load(EVAL_PATH + '/I.pt').cpu().eval()
 
-# initialise noise for grid images so that latent vector is same every time
-Z_plot = torch.randn(n_images**2, n_z).cuda().view(n_images**2, n_z, 1, 1)
 samples = 0
 best_fid = 100
 
@@ -106,6 +102,7 @@ noise = Annealed_Noise(noise_scale, n_epochs)
 im_grid = Plot_Images(X_full, n_z)
 fid = FID(I, X_full)
 eval = Eval(n_epochs)
+labels = Labels(p_flip)
 
 for epoch in range(n_epochs):
     
@@ -133,16 +130,12 @@ for epoch in range(n_epochs):
             if torch.max(X.pow(2)) > 1:
                 print('Pixel above magnitude 1, data may not be normalised correctly')
 
+            n_X = X.shape[0]
+
             zeros = labels.zeros(n_X)
             ones = labels.ones(n_X)
-           
-            # Encode data point and reconstruct from latent space
-            mu, logvar = E(X.detach())
-            X_tilde = G(z_sample(mu.detach(), logvar.detach()))
-
-            # Generate random data point
-            Z = torch.randn_like(mu)
-            X_p = G(Z)
+            
+            G = G.cuda()
 
             ############################################
             ########### update discriminator ###########
@@ -185,7 +178,8 @@ for epoch in range(n_epochs):
             ############################################
             G_opt.zero_grad()
 
-            ## Reconstructed batch ##
+            ## train with reconstructed batch ##
+            # decode data point and reconstruct from latent space
             X_tilde = G(z_sample(mu.detach(), logvar.detach()))
             # pass through Driminator -> backprop loss
             y_X_tilde, D_l_X_tilde = D(noise(X_tilde))
@@ -240,14 +234,7 @@ for epoch in range(n_epochs):
     L_dict['y_gen'][epoch] = y_gen/(iterations*n_cycles)
     L_dict['y_recon'][epoch] = y_recon/(iterations*n_cycles)
 
-    #if (epoch+1) % 10 == 0:
-        #torch.save(D, CHECKPOINT_PATH + f'/D_fr{label+1}_{epoch}.pt')
-        #torch.save(L_dict, EVAL_PATH + '/L_dict.pt')
-
     with torch.no_grad():
-        # Set models to evaluation mode
-        Set_Model.eval(E, G, D)
-
         ## Plot image grid ##
         if (epoch+1) % 10 == 0:
             im_grid.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
@@ -256,7 +243,7 @@ for epoch in range(n_epochs):
         plot_images(X, E, G, n_z, epoch)
 
         # generate a set of fake images
-        X_fake = generate(G, n_z, n_samples=1000).cpu()
+        X_fake = FID.generate(G, n_z, n_samples=1000).cpu()
 
         ## Calculate and store metrics ##
         score = fid(X_fake)
