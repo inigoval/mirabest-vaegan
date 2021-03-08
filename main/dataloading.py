@@ -1,18 +1,19 @@
-from __future__ import print_function
-import torchvision
-from PIL import Image
 import os
-import os.path
-import numpy as np
 import sys
 import pickle
-import torch.utils.data as data
-from torchvision.datasets.utils import download_url, check_integrity
-import torchvision.transforms as T
 import torch
+import torchvision
+import numpy as np
+import torchvision.transforms as T
+import torch.utils.data as data
 
-FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_PATH = os.path.join(FILE_PATH, 'data')
+from PIL import Image
+from torchvision.datasets.utils import download_url, check_integrity
+
+from paths import Path_Handler
+
+paths = Path_Handler()
+path_dict = paths._dict()
 
 
 class MiraBest_full(data.Dataset):
@@ -325,8 +326,8 @@ def load_data(batch_size, label=1, seed=69, fraction=1, tensor=False, fid_sample
         Circle_Crop()
     ])
 
-    train_data = MB_nohybrids(DATA_PATH, train=True, transform=transform, download=True)
-    test_data = MB_nohybrids(DATA_PATH, train=False, transform=transform, download=True)
+    train_data = MB_nohybrids(path_dict['data'], train=True, transform=transform, download=True)
+    test_data = MB_nohybrids(path_dict['data'], train=False, transform=transform, download=True)
 
     # Reduce dataset to only include given labels
     choose_label(train_data, label)

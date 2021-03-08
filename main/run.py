@@ -8,38 +8,17 @@ import os
 import glob
 import yaml
 
+from pathlib import Path
+
 from networks import enc, dec, disc, I
 from utilities import Annealed_Noise, Plot_Images, Labels 
-from utilities import z_sample, plot_images, KL_loss, load_config
+from utilities import z_sample, KL_loss, load_config
 from evaluation import FID, Eval
 from dataloading import load_data
+from paths import Path_Handler
 
-# define paths for saving
-FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-EVAL_PATH = os.path.join(FILE_PATH, 'files', 'eval')
-DATA_PATH = os.path.join(FILE_PATH, 'data')
-CHECKPOINT_PATH = os.path.join(FILE_PATH, 'files', 'checkpoints')
-FIG_PATH = os.path.join(FILE_PATH, 'files', 'figs')
-IMAGE_PATH = os.path.join(FILE_PATH, 'files', 'images')
-CONFIG_PATH = os.path.join(FILE_PATH, 'configs')
-
-EMBEDDING_PATH = os.path.join(EVAL_PATH, 'embeddings')
-FAKE_PATH = os.path.join(IMAGE_PATH, 'fake')
-RECON_PATH = os.path.join(IMAGE_PATH, 'reconstructed')
-
-EMBEDDING_PATH_REAL = os.path.join(EMBEDDING_PATH, 'real')
-EMBEDDING_PATH_FAKE = os.path.join(EMBEDDING_PATH, 'fake')
-
-path_list = [FILE_PATH, EVAL_PATH, DATA_PATH, CHECKPOINT_PATH, FIG_PATH,
-             IMAGE_PATH, EMBEDDING_PATH, FAKE_PATH, RECON_PATH, EMBEDDING_PATH_FAKE,
-             EMBEDDING_PATH_REAL]
-
-
-# Create any directories that don't exist
-for path in path_list:
-    if not os.path.exists(path):
-        os.makedirs(path)
+paths = Path_Handler()
+path_dict = paths._dict()
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 cuda = torch.device('cuda')
@@ -61,19 +40,6 @@ label = config['training']['label']
 lr = config['training']['lr']
 skip = config['training']['skip']
 
-## initialise parameters ##
-# smoothing parameters
-smoothing = False
-smoothing_scale = 0.12
-# discriminator noise parameters
-noise = True
-noise_scale = 0.35
-# label flipping
-label_flip = True
-# image grid plotting
-n_images = 6
-# 0 = fri 1 = frii
-
 ## initialise networks, losses and optimizers ##
 E, G, D = enc().cuda(), dec().cuda(), disc().cuda()
 E_opt = torch.optim.Adam(E.parameters(), lr=lr)
@@ -91,15 +57,18 @@ L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': to
           'L_D': torch.zeros(n_epochs), 'y_gen': torch.zeros(n_epochs), 'y_recon': torch.zeros(n_epochs)}
 
 
-# Load pretrained classifier model
-I = torch.load(EVAL_PATH + '/I.pt').cpu().eval()
+# load inception model
+I = torch.load(path_dict['eval'] / 'I.pt').cpu().eval()
+# load full datasets for plotting latent space #
+X_full, y_full = load_data(batch_size, label=label, reduce=True, array=True)
 
 samples = 0
 best_fid = 100
 
 # Initialise classes
 noise = Annealed_Noise(noise_scale, n_epochs)
-im_grid = Plot_Images(X_full, n_z)
+im_grid = Plot_Images(X_full, n_z, path_dict)
+im_stamp = Plot_Images(X_full, n_z, path_dict, grid_length=2)
 fid = FID(I, X_full)
 eval = Eval(n_epochs)
 labels = Labels(p_flip)
@@ -240,7 +209,9 @@ for epoch in range(n_epochs):
             im_grid.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
             im_grid.plot_generate(E, G, filename=f'grid_X_fake_{epoch+1}.pdf', recon=False)
 
-        plot_images(X, E, G, n_z, epoch)
+        
+        im_stamp.plot_generate(E, G, filename=f'X_fake_{epoch+1}.pdf', recon=False)
+        im_stamp.plot_generate(E, G, filename=f'X_recon_{epoch+1}.pdf', recon=True)
 
         # generate a set of fake images
         X_fake = FID.generate(G, n_z, n_samples=1000).cpu()
@@ -269,6 +240,6 @@ for epoch in range(n_epochs):
                         'G': G.state_dict(),
                         'E': E.state_dict(),
                         'FID': score,
-                        }, CHECKPOINT_PATH + f'/model_dict_fr{label+1}_e{epoch+1}_fid{int(score)}.pt')
+                        }, path_dict['checkpoints'] / f'model_dict_fr{label+1}_e{epoch+1}_fid{int(score)}.pt')
 
         print(f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score:.3f}  |  best: {best_fid:.1f}')

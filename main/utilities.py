@@ -7,23 +7,15 @@ import os
 import yaml
 
 from mpl_toolkits.axes_grid1 import ImageGrid
+
 from dataloading import MiraBest_full
+from paths import Path_Handler
+
 
 # define paths for saving
-# define paths for saving
-FILE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+paths = Path_Handler()
+path_dict = paths._dict()
 
-EVAL_PATH = os.path.join(FILE_PATH, 'files', 'eval')
-DATA_PATH = os.path.join(FILE_PATH, 'data')
-CFG_PATH = os.path.join(FILE_PATH, 'configs')
-CHECKPOINT_PATH = os.path.join(FILE_PATH, 'files', 'checkpoints')
-FIG_PATH = os.path.join(FILE_PATH, 'files', 'figs')
-IMAGE_PATH = os.path.join(FILE_PATH, 'files', 'images')
-CFG_PATH = os.path.join(FILE_PATH, 'config')
-
-EMBEDDING_PATH = os.path.join(EVAL_PATH, 'embeddings')
-FAKE_PATH = os.path.join(IMAGE_PATH, 'fake')
-RECON_PATH = os.path.join(IMAGE_PATH, 'reconstructed')
 
 class Annealed_Noise():
     """
@@ -53,13 +45,13 @@ class Plot_Images():
     """
     Class designed to plot image grids with the same latent vector/real image input
     """
-    def __init__(self, X_full, n_z, grid_length=6, recon_path=RECON_PATH, fake_path=FAKE_PATH):
+    def __init__(self, X_full, n_z, path_dict, grid_length=6):
         self.grid_length = grid_length
         idx = np.random.randint(0, X_full.shape[0], int((grid_length**2)/2))
         self.X = X_full[idx, ...].cuda()
         self.Z = torch.randn(grid_length**2, n_z).cuda().view(grid_length**2, n_z, 1, 1)
-        self.recon_path = recon_path
-        self.fake_path = fake_path
+        self.recon_path = path_dict['recon']
+        self.fake_path = path_dict['fake']
         self.H = X_full.shape[-1]
         self.W = X_full.shape[-2]
 
@@ -125,7 +117,7 @@ class Labels():
         return p_flip
 
 
-def load_config(config_path=CFG_PATH):
+def load_config(config_path=path_dict['config']):
     """
     Helper function to load config file
     """
@@ -160,7 +152,7 @@ def plot_losses(L_dict, epoch):
     ax.plot(x_plot[:epoch], L_dict['L_D'][:epoch], label='discriminator loss')
     ax.set_xlabel('epoch')
     ax.legend()
-    fig.savefig(FIG_PATH + '/network_losses.pdf')
+    fig.savefig(path_dict['eval'] / 'network_losses.pdf')
     plt.close(fig)
 
     ## plot average predicted probabilities for generated/reconstructed images ##
@@ -173,52 +165,6 @@ def plot_losses(L_dict, epoch):
     ax.legend()
     fig.savefig(FIG_PATH + '/disc_predictions.pdf')
     plt.close(fig)
-
-
-def plot_images(X, E, G, n_z, epoch):
-    """
-    Plot and save images from both randomly generated z vectors and
-    z vectors encoded from real data
-    """
-    # generate random z values
-    Z_plot = torch.normal(torch.zeros(4, n_z), torch.ones(4, n_z)).cuda().view(4, n_z, 1, 1)
-    X_gen = G(Z_plot).cpu().detach().view(-1, 150, 150).numpy()
-    # set up a 2x2 grid of plots in figure 2
-    # [ax21  ax22]
-    # [ax23  ax24]
-    fig, ((ax21, ax22), (ax23, ax24)) = plt.subplots(2, 2)
-    im1 = ax21.imshow(X_gen[0, :, :], cmap='hot')
-    im2 = ax22.imshow(X_gen[1, :, :], cmap='hot')
-    im3 = ax23.imshow(X_gen[2, :, :], cmap='hot')
-    im4 = ax24.imshow(X_gen[3, :, :], cmap='hot')
-    fig.savefig(FAKE_PATH + f'/epoch_{epoch+1}.pdf')
-    plt.close(fig)
-
-    X_sample = X[:2, :, :, :]
-    X_recon = G(E(X_sample)[0]).cpu().detach().view(-1, 150, 150).numpy()
-    # set up a 2x2 grid of plots in figure 2
-    # [ax21  ax22]
-    # [ax23  ax24]
-    fig, ((ax21, ax22), (ax23, ax24)) = plt.subplots(2, 2)
-    im1 = ax21.imshow(X_recon[0, :, :], cmap='hot')
-    im2 = ax22.imshow(X_recon[1, :, :], cmap='hot')
-    im3 = ax23.imshow(X_sample[0, :, :].cpu().view(150, 150).numpy(), cmap='hot')
-    im4 = ax24.imshow(X_sample[1, :, :].cpu().view(150, 150).numpy(), cmap='hot')
-    fig.savefig(RECON_PATH + f'/recon_epoch_{epoch+1}.pdf')
-    plt.close(fig)
-
-
-def y_collapsed(y):
-    """
-    DEPRECATED
-    """
-    fri = torch.full((y.shape[0],), 0, dtype=torch.long)
-    frii = torch.full((y.shape[0],), 1, dtype=torch.long)
-    hybrid = torch.full((y.shape[0],), 2, dtype=torch.long)
-    y = torch.where(y > 4.5, y, fri)
-    y = torch.where((y < 4.5) | (y > 7.5), y, frii)
-    y = torch.where(y < 7.5, y, hybrid)
-    return y
 
 
 def set_requires_grad(network, bool_val):
