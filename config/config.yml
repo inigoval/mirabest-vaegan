@@ -18,3 +18,4 @@ training:
     p_flip: 0.05                   # probability of label flip
     label: 0                       # label to generate, 0:fri 1:frii
     lr: 0.0002                     # learning rate
+    skip: False                    # skips training (use to test code logic)

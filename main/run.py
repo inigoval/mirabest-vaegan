@@ -61,6 +61,7 @@ noise_scale = config['training']['noise_scale']
 p_flip = config['training']['p_flip']
 label = config['training']['label']
 lr = config['training']['lr']
+skip = config['training']['skip']
 
 ## initialise parameters ##
 # smoothing parameters
@@ -131,9 +132,11 @@ for epoch in range(n_epochs):
             n_X = X.shape[0]
             samples += n_X
             X = X.cuda()
-
-            #if i == 2:
-            #   break
+            
+            # Skip training (use to quickly test code) #
+            if skip: 
+                if i == 3:
+                    break
 
             # Check X is normalised properly
             if torch.max(X.pow(2)) > 1:
