@@ -8,7 +8,6 @@ import yaml
 
 from mpl_toolkits.axes_grid1 import ImageGrid
 
-from dataloading import MiraBest_full
 from paths import Path_Handler
 
 
@@ -142,31 +141,6 @@ def z_sample(mu, logvar):
     return z_tilde
 
 
-def plot_losses(L_dict, epoch):
-    x_plot = L_dict['x_plot']
-
-    ## plot losses for each network ##
-    fig, ax = plt.subplots(1, 1)
-    ax.plot(x_plot[:epoch], L_dict['L_E'][:epoch], label='encoder loss')
-    ax.plot(x_plot[:epoch], L_dict['L_G'][:epoch], label='decoder loss')
-    ax.plot(x_plot[:epoch], L_dict['L_D'][:epoch], label='discriminator loss')
-    ax.set_xlabel('epoch')
-    ax.legend()
-    fig.savefig(path_dict['eval'] / 'network_losses.pdf')
-    plt.close(fig)
-
-    ## plot average predicted probabilities for generated/reconstructed images ##
-    fig, ax = plt.subplots(1, 1)
-    x_plot = L_dict['x_plot']
-    ax.plot(x_plot[:epoch], L_dict['y_gen'][:epoch], label='D(G(z))')
-    ax.plot(x_plot[:epoch], L_dict['y_recon'][:epoch], label='D(G(E(X)))')
-    #ax.plot(x_plot[:epoch], half[:epoch], 'g:', label = 'p(real) = 0.5')
-    ax.set_xlabel('epoch')
-    ax.legend()
-    fig.savefig(FIG_PATH + '/disc_predictions.pdf')
-    plt.close(fig)
-
-
 class Set_Model():
     def __init__(self):
         pass
@@ -196,3 +170,28 @@ class Set_Model():
             elif classname.find('BatchNorm') != -1:
                 nn.init.normal_(m.weight.data, 1.0, 0.02)
                 nn.init.constant_(m.bias.data, 0)
+
+
+def plot_losses(L_dict, epoch):
+    x_plot = L_dict['x_plot']
+
+    ## plot losses for each network ##
+    fig, ax = plt.subplots(1, 1)
+    ax.plot(x_plot[:epoch], L_dict['L_E'][:epoch], label='encoder loss')
+    ax.plot(x_plot[:epoch], L_dict['L_G'][:epoch], label='decoder loss')
+    ax.plot(x_plot[:epoch], L_dict['L_D'][:epoch], label='discriminator loss')
+    ax.set_xlabel('epoch')
+    ax.legend()
+    fig.savefig(path_dict['eval'] / 'network_losses.pdf')
+    plt.close(fig)
+
+    ## plot average predicted probabilities for generated/reconstructed images ##
+    fig, ax = plt.subplots(1, 1)
+    x_plot = L_dict['x_plot']
+    ax.plot(x_plot[:epoch], L_dict['y_gen'][:epoch], label='D(G(z))')
+    ax.plot(x_plot[:epoch], L_dict['y_recon'][:epoch], label='D(G(E(X)))')
+    #ax.plot(x_plot[:epoch], half[:epoch], 'g:', label = 'p(real) = 0.5')
+    ax.set_xlabel('epoch')
+    ax.legend()
+    fig.savefig(FIG_PATH + '/disc_predictions.pdf')
+    plt.close(fig)

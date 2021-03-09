@@ -14,8 +14,9 @@ from networks import enc, dec, disc, I
 from utilities import Annealed_Noise, Plot_Images, Labels, Set_Model
 from utilities import z_sample, KL_loss, load_config
 from evaluation import FID, Eval
-from dataloading import load_data
+from dataloading import Data_Agent
 from paths import Path_Handler
+from datasets import MiraBest_full, MB_nohybrids, MBFRConfident 
 
 paths = Path_Handler()
 path_dict = paths._dict()
@@ -49,8 +50,13 @@ MSE_loss = nn.MSELoss(reduction='mean')
 BCE_loss = nn.BCELoss(reduction='mean')
 
 
-## load and normalise data ##
-trainLoader, testLoader, n_test = load_data(batch_size, label=label, fraction=fraction)
+## Load data ##
+data_agent = Data_Agent(MB_nohybrids)
+data_agent.set_labels(label)
+data_agent.subset(fraction)
+data_agent.fid_dset()
+
+trainLoader, testLoader = data_agent.load()
 
 # Assign dictionary to hold plotting values
 L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': torch.zeros(n_epochs),
@@ -60,18 +66,16 @@ L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': to
 # Load inception model
 I = torch.load(path_dict['eval'] / 'I.pt').cpu().eval()
 
-# Load full dataset as tensor #
-X_full, y_full = load_data(batch_size, label=label, reduce=True, array=True)
 
 samples = 0
-best_fid = 100
-best_epoch = 1
+best_fid = 50
+best_epoch = None
 
 # Initialise classes
 noise = Annealed_Noise(noise_scale, n_epochs)
-im_grid = Plot_Images(X_full, n_z, path_dict)
-im_stamp = Plot_Images(X_full, n_z, path_dict, grid_length=2)
-fid = FID(I, X_full)
+im_grid = Plot_Images(data_agent.X_fid, n_z, path_dict)
+im_stamp = Plot_Images(data_agent.X_fid, n_z, path_dict, grid_length=2)
+fid = FID(I, data_agent.X_fid)
 eval = Eval(n_epochs)
 labels = Labels(p_flip)
 
@@ -81,7 +85,7 @@ for epoch in range(n_epochs):
     noise.update_epsilon(epoch)
     eval.epsilon[epoch] = noise.epsilon
 
-    Set_Model.train(E, G, D)
+    D.train()
     L_E_cum, L_G_cum, L_D_cum = 0, 0, 0
     y_recon, y_gen = 0, 0
 
@@ -169,8 +173,8 @@ for epoch in range(n_epochs):
             y_gen += y_X_p.mean().item()  # average and save output probability
 
             ## VAE loss ##
-            D_l_X = D(noise(X))[1]
-            L_G_llike = MSE_loss(D_l_X, D_l_X_tilde)*gamma
+            D_l_X = D(X)[1]
+            L_G_llike = MSE_loss(D_l_X, D_l_X_tilde)*gamma  # maybe detach D output here
             L_G_llike.backward()
 
             ## Sum gradients and step optimizer ##
@@ -190,8 +194,8 @@ for epoch in range(n_epochs):
             ## llike loss ##
             # Forward passes to generate feature maps
             X_tilde = G(z_sample(mu, logvar))
-            _, D_l_X_tilde = D(noise(X_tilde))
-            _, D_l_X = D(noise(X))
+            _, D_l_X_tilde = D(X_tilde)
+            _, D_l_X = D(X)
             L_E_llike = MSE_loss(D_l_X, D_l_X_tilde)
             L_E_llike.backward()
 
@@ -206,7 +210,6 @@ for epoch in range(n_epochs):
     L_dict['y_recon'][epoch] = y_recon/(iterations*n_cycles)
 
     with torch.no_grad():
-        Set_Model.eval(E, G, D)
         ## Plot image grid ##
         if (epoch+1) % 10 == 0:
             im_grid.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
@@ -223,7 +226,7 @@ for epoch in range(n_epochs):
         score = fid(X_fake)
         eval.samples[epoch] = samples
         eval.fid[epoch] = score
-        eval.calc_overfitscore(D, testLoader, n_test, noise)
+        eval.calc_overfitscore(D, testLoader, data_agent.n_test, noise)
         eval.calc_ratio(X_fake, I)
 
         ## Plot Metrics ##
@@ -237,6 +240,7 @@ for epoch in range(n_epochs):
         if score < best_fid:
             print('Model saved')
             best_fid = int(score)
+            best_epoch = epoch+1
             im_grid.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
             im_grid.plot_generate(E, G, filename=f'grid_X_fake_{epoch+1}.pdf', recon=False)
             torch.save({'epoch': epoch,
