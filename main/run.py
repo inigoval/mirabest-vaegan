@@ -1,12 +1,7 @@
 import torch
-import matplotlib.pyplot as plt
 import torchvision
-import time
 import torch.nn as nn
 import numpy as np
-import os
-import glob
-import yaml
 
 from pathlib import Path
 
@@ -16,7 +11,7 @@ from utilities import z_sample, KL_loss, load_config
 from evaluation import FID, Eval
 from dataloading import Data_Agent
 from paths import Path_Handler
-from datasets import MiraBest_full, MB_nohybrids, MBFRConfident 
+from datasets import MiraBest_full, MB_nohybrids, MBFRConfident
 
 paths = Path_Handler()
 path_dict = paths._dict()
@@ -26,7 +21,7 @@ cuda = torch.device('cuda')
 
 config = load_config()
 
-## Load parameters from config ##
+# Load parameters from config #
 batch_size = config['data']['batch_size']
 fraction = config['data']['fraction']
 
@@ -34,14 +29,14 @@ n_z = config['model']['n_z']
 
 n_epochs = config['training']['n_epochs']
 n_cycles = config['training']['n_cycles']
-gamma = config['training']['gamma']  
+gamma = config['training']['gamma']
 noise_scale = config['training']['noise_scale']
 p_flip = config['training']['p_flip']
 label = config['training']['label']
 lr = config['training']['lr']
 skip = config['training']['skip']
 
-## initialise networks, losses and optimizers ##
+# Initialise networks, losses and optimizers #
 E, G, D = enc().cuda(), dec().cuda(), disc().cuda()
 E_opt = torch.optim.Adam(E.parameters(), lr=lr)
 G_opt = torch.optim.Adam(G.parameters(), lr=lr)
@@ -49,8 +44,7 @@ D_opt = torch.optim.Adam(D.parameters(), lr=lr)
 MSE_loss = nn.MSELoss(reduction='mean')
 BCE_loss = nn.BCELoss(reduction='mean')
 
-
-## Load data ##
+# Load data #
 data_agent = Data_Agent(MB_nohybrids)
 data_agent.set_labels(label)
 data_agent.subset(fraction)
@@ -59,33 +53,44 @@ data_agent.fid_dset()
 trainLoader, testLoader = data_agent.load()
 
 # Assign dictionary to hold plotting values
-L_dict = {'x_plot': np.arange(n_epochs), 'L_E': torch.zeros(n_epochs), 'L_G': torch.zeros(n_epochs),
-          'L_D': torch.zeros(n_epochs), 'y_gen': torch.zeros(n_epochs), 'y_recon': torch.zeros(n_epochs)}
-
+L_dict = {
+    'x_plot': np.arange(n_epochs),
+    'L_E': torch.zeros(n_epochs),
+    'L_G': torch.zeros(n_epochs),
+    'L_D': torch.zeros(n_epochs),
+    'y_gen': torch.zeros(n_epochs),
+    'y_recon': torch.zeros(n_epochs)
+}
 
 # Load inception model
 I = torch.load(path_dict['eval'] / 'I.pt').cpu().eval()
-
 
 samples = 0
 best_fid = 50
 best_epoch = None
 
-# Initialise classes
+# Initialise annealed noise #
 noise = Annealed_Noise(noise_scale, n_epochs)
+
+# Initialise image grids #
 im_grid = Plot_Images(data_agent.X_fid, n_z, path_dict)
 im_stamp = Plot_Images(data_agent.X_fid, n_z, path_dict, grid_length=2)
+
+# Initialise evaluation classes #
 fid = FID(I, data_agent.X_fid)
 eval = Eval(n_epochs)
+
+# Initialise label generator #
 labels = Labels(p_flip)
 
 for epoch in range(n_epochs):
-    
+
     # Update annealed noise amplitude #
     noise.update_epsilon(epoch)
     eval.epsilon[epoch] = noise.epsilon
 
-    D.train()
+    # D.train()
+    Set_Model.train(G, D)
     L_E_cum, L_G_cum, L_D_cum = 0, 0, 0
     y_recon, y_gen = 0, 0
 
@@ -95,9 +100,9 @@ for epoch in range(n_epochs):
             n_X = X.shape[0]
             samples += n_X
             X = X.cuda()
-            
+
             # Skip training (use to quickly test code) #
-            if skip: 
+            if skip:
                 if i == 2:
                     break
 
@@ -109,7 +114,7 @@ for epoch in range(n_epochs):
 
             zeros = labels.zeros(n_X)
             ones = labels.ones(n_X)
-            
+
             G = G.cuda()
 
             ############################################
@@ -142,7 +147,7 @@ for epoch in range(n_epochs):
             L_D_X_p.backward()
 
             # sum gradients
-            L_D = (L_D_X + L_D_X_p + L_D_X_tilde)/3
+            L_D = (L_D_X + L_D_X_p + L_D_X_tilde) / 3
 
             # step optimizer
             # if L_D > L_G:
@@ -159,9 +164,10 @@ for epoch in range(n_epochs):
             # pass through Driminator -> backprop loss
             y_X_tilde, D_l_X_tilde = D(noise(X_tilde))
             y_X_tilde = y_X_tilde.view(-1)
-            L_G_recon = G.backprop(y_X_tilde, ones, BCE_loss)
-            # Average and save output probability
-            y_recon += y_X_tilde.mean().item()
+            L_G_X_tilde = BCE_loss(y_X_tilde, ones)
+            L_G_X_tilde.backward(retain_graph=True)
+            y_recon += y_X_tilde.mean().item(
+            )  # average and save output probability
 
             ## train with random batch ##
             # sample z from p(z) = N(0,1) -> generate X
@@ -174,11 +180,14 @@ for epoch in range(n_epochs):
 
             ## VAE loss ##
             D_l_X = D(X)[1]
-            L_G_llike = MSE_loss(D_l_X, D_l_X_tilde)*gamma  # maybe detach D output here
+            L_G_llike = MSE_loss(
+                D_l_X, D_l_X_tilde) * gamma  # maybe detach D output here
             L_G_llike.backward()
 
-            ## Sum gradients and step optimizer ##
-            L_G = (L_G_fake + L_G_recon)/2 + L_G_llike
+            ## sum gradients ##
+            L_G = (L_G_X_p + L_G_X_tilde) / 2 + L_G_llike
+
+            # step optimizer
             G_opt.step()
 
             ############################################
@@ -205,19 +214,34 @@ for epoch in range(n_epochs):
 
             iterations = i
 
-    ## Insert cumulative losses into dictionary ##
-    L_dict['y_gen'][epoch] = y_gen/(iterations*n_cycles)
-    L_dict['y_recon'][epoch] = y_recon/(iterations*n_cycles)
+    ## insert cumulative losses into dictionary ##
+    L_dict['L_E'][epoch] = L_E_cum / (iterations * n_cycles)
+    L_dict['L_G'][epoch] = L_G_cum / (iterations * n_cycles)
+    L_dict['L_D'][epoch] = L_D_cum / (iterations * n_cycles)
+    L_dict['y_gen'][epoch] = y_gen / (iterations * n_cycles)
+    L_dict['y_recon'][epoch] = y_recon / (iterations * n_cycles)
 
     with torch.no_grad():
+        Set_Model.eval(G, D)
         ## Plot image grid ##
-        if (epoch+1) % 10 == 0:
-            im_grid.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
-            im_grid.plot_generate(E, G, filename=f'grid_X_fake_{epoch+1}.pdf', recon=False)
+        if (epoch + 1) % 10 == 0:
+            im_grid.plot_generate(E,
+                                  G,
+                                  filename=f'grid_X_recon_{epoch+1}.pdf',
+                                  recon=True)
+            im_grid.plot_generate(E,
+                                  G,
+                                  filename=f'grid_X_fake_{epoch+1}.pdf',
+                                  recon=False)
 
-        
-        im_stamp.plot_generate(E, G, filename=f'X_fake_{epoch+1}.pdf', recon=False)
-        im_stamp.plot_generate(E, G, filename=f'X_recon_{epoch+1}.pdf', recon=True)
+        im_stamp.plot_generate(E,
+                               G,
+                               filename=f'X_fake_{epoch+1}.pdf',
+                               recon=False)
+        im_stamp.plot_generate(E,
+                               G,
+                               filename=f'X_recon_{epoch+1}.pdf',
+                               recon=True)
 
         # generate a set of fake images
         X_fake = FID.generate(G, n_z, n_samples=1000).cpu()
@@ -235,18 +259,28 @@ for epoch in range(n_epochs):
         eval.plot_fid(eps=False, ylim=100)
         eval.plot_overfitscore()
 
-
         # Save generator/encoder weights if FID score is high
         if score < best_fid:
             print('Model saved')
             best_fid = int(score)
-            best_epoch = epoch+1
-            im_grid.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
-            im_grid.plot_generate(E, G, filename=f'grid_X_fake_{epoch+1}.pdf', recon=False)
-            torch.save({'epoch': epoch,
-                        'G': G.state_dict(),
-                        'E': E.state_dict(),
-                        'FID': score,
-                        }, path_dict['checkpoints'] / f'model_dict_fr{label+1}_e{epoch+1}_fid{int(score)}.pt')
+            best_epoch = epoch + 1
+            im_grid.plot_generate(E,
+                                  G,
+                                  filename=f'grid_X_recon_{epoch+1}.pdf',
+                                  recon=True)
+            im_grid.plot_generate(E,
+                                  G,
+                                  filename=f'grid_X_fake_{epoch+1}.pdf',
+                                  recon=False)
+            torch.save(
+                {
+                    'epoch': epoch,
+                    'G': G.state_dict(),
+                    'E': E.state_dict(),
+                    'FID': score,
+                }, path_dict['checkpoints'] /
+                f'model_dict_fr{label+1}_e{epoch+1}_fid{int(score)}.pt')
 
-        print(f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score:.3f}  |  best: {best_fid:.1f} (epoch {best_epoch})')
+        print(
+            f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score:.3f}  |  best: {best_fid:.1f} (epoch {best_epoch})'
+        )
