@@ -76,6 +76,11 @@ noise = Annealed_Noise(noise_scale, n_epochs)
 im_grid = Plot_Images(data_agent.X_fid, n_z, path_dict)
 im_stamp = Plot_Images(data_agent.X_fid, n_z, path_dict, grid_length=2)
 
+aug_list = [] 
+aug_list.append(Plot_Images(data_agent.X_fid, n_z, path_dict, grid_length=4, alpha=0.5))
+aug_list.append(Plot_Images(data_agent.X_fid, n_z, path_dict, grid_length=4, alpha=1))
+aug_list.append(Plot_Images(data_agent.X_fid, n_z, path_dict, grid_length=4, alpha=2))
+
 # Initialise evaluation classes #
 fid = FID(I, data_agent.X_fid)
 eval = Eval(n_epochs)
@@ -225,23 +230,15 @@ for epoch in range(n_epochs):
         Set_Model.eval(G, D)
         ## Plot image grid ##
         if (epoch + 1) % 10 == 0:
-            im_grid.plot_generate(E,
-                                  G,
-                                  filename=f'grid_X_recon_{epoch+1}.pdf',
-                                  recon=True)
-            im_grid.plot_generate(E,
-                                  G,
-                                  filename=f'grid_X_fake_{epoch+1}.pdf',
-                                  recon=False)
+            im_grid.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
+            im_grid.plot_generate(E, G, filename=f'grid_X_fake_{epoch+1}.pdf', recon=False)
 
-        im_stamp.plot_generate(E,
-                               G,
-                               filename=f'X_fake_{epoch+1}.pdf',
-                               recon=False)
-        im_stamp.plot_generate(E,
-                               G,
-                               filename=f'X_recon_{epoch+1}.pdf',
-                               recon=True)
+            for aug in aug_list:
+                aug.GAug(E, G)
+                aug.plot(path_dict['gaug'] / f'epoch{epoch+1}_alpha{aug.alpha}.png')
+
+        im_stamp.plot_generate(E, G, filename=f'X_fake_{epoch+1}.pdf', recon=False)
+        im_stamp.plot_generate(E, G, filename=f'X_recon_{epoch+1}.pdf', recon=True)
 
         # generate a set of fake images
         X_fake = FID.generate(G, n_z, n_samples=1000).cpu()
@@ -264,22 +261,20 @@ for epoch in range(n_epochs):
             print('Model saved')
             best_fid = int(score)
             best_epoch = epoch + 1
-            im_grid.plot_generate(E,
-                                  G,
-                                  filename=f'grid_X_recon_{epoch+1}.pdf',
-                                  recon=True)
-            im_grid.plot_generate(E,
-                                  G,
-                                  filename=f'grid_X_fake_{epoch+1}.pdf',
-                                  recon=False)
+            im_grid.plot_generate(E, G, filename=f'grid_X_recon_{epoch+1}.pdf', recon=True)
+            im_grid.plot_generate(E, G, filename=f'grid_X_fake_{epoch+1}.pdf', recon=False)
+            for aug in aug_list:
+                aug.GAug(E, G)
+                aug.plot(path_dict['gaug'] / f'epoch{epoch+1}_alpha{aug.alpha}.png')
+
             torch.save(
                 {
                     'epoch': epoch,
                     'G': G.state_dict(),
                     'E': E.state_dict(),
                     'FID': score,
-                }, path_dict['checkpoints'] /
-                f'model_dict_fr{label+1}_e{epoch+1}_fid{int(score)}.pt')
+                },
+                path_dict['checkpoints'] / f'model_dict_fr{label+1}_e{epoch+1}_fid{int(score)}.pt')
 
         print(
             f'epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score:.3f}  |  best: {best_fid:.1f} (epoch {best_epoch})'

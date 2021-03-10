@@ -10,7 +10,6 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 from paths import Path_Handler
 
-
 # define paths for saving
 paths = Path_Handler()
 path_dict = paths._dict()
@@ -28,14 +27,14 @@ class Annealed_Noise():
 
     def __call__(self, X):
         if self.noise_scale > 0:
-            noise = torch.randn_like(X)*self.epsilon*self.noise_scale
-            X = X + noise  
+            noise = torch.randn_like(X) * self.epsilon * self.noise_scale
+            X = X + noise
             return X
         else:
             return X
 
     def update_epsilon(self, epoch):
-        epsilon = 1 - 1.33333333*epoch/self.n_epochs
+        epsilon = 1 - 1.33333333 * epoch / self.n_epochs
         epsilon = np.clip(epsilon, 0, 1)
         self.epsilon = epsilon
 
@@ -44,21 +43,24 @@ class Plot_Images():
     """
     Class designed to plot image grids with the same latent vector/real image input
     """
-    def __init__(self, X_full, n_z, path_dict, grid_length=6):
+    def __init__(self, X_full, n_z, path_dict, grid_length=6, alpha=0):
         self.grid_length = grid_length
-        idx = np.random.randint(0, X_full.shape[0], int((grid_length**2)/2))
+        idx = np.random.randint(0, X_full.shape[0], int((grid_length**2) / 2))
         self.X = X_full[idx, ...].cuda()
-        self.Z = torch.randn(grid_length**2, n_z).cuda().view(grid_length**2, n_z, 1, 1)
+        self.Z = torch.randn(grid_length**2,
+                             n_z).cuda().view(grid_length**2, n_z, 1, 1)
         self.recon_path = path_dict['recon']
         self.fake_path = path_dict['fake']
         self.H = X_full.shape[-1]
         self.W = X_full.shape[-2]
+        self.alpha = alpha
 
     def plot(self, path):
         img_list = list(self.img_array)
         assert self.grid_length == int(len(img_list)**0.5)
         fig = plt.figure(figsize=(13., 13.))
-        grid = ImageGrid(fig, 111,
+        grid = ImageGrid(fig,
+                         111,
                          nrows_ncols=(self.grid_length, self.grid_length),
                          axes_pad=0)
 
@@ -74,10 +76,23 @@ class Plot_Images():
         if recon:
             mu, logvar = E(self.X)
             X_recon = G(mu).detach().cpu().numpy()
-            X = np.concatenate((X_recon, self.X.detach().cpu().numpy()), axis=0)
+            X = np.concatenate((X_recon, self.X.detach().cpu().numpy()),
+                               axis=0)
         else:
             X = G(self.Z).view(-1, self.H, self.W).detach().cpu().numpy()
-        
+
+        self.img_array = X
+
+    def GAug(self, E, G, idx=0):
+        img = self.X[idx, ...]
+        n_gen = self.grid_length**2 - 1
+        mu, logvar = E(img.view(1, 1, self.H, self.W))
+        mu = mu.expand(n_gen, -1, -1, -1)
+        logvar = logvar.expand(n_gen, -1, -1, -1)
+        std = self.alpha * torch.exp(0.5 * logvar)
+        Z = std * torch.randn_like(mu) + mu
+        X = G(Z).view(-1, self.H, self.W).detach().cpu().numpy()
+        X = np.concatenate((img.detach().cpu().numpy(), X), axis=0)
         self.img_array = X
 
     def plot_generate(self, E, G, filename='images.pdf', recon=False):
@@ -96,22 +111,22 @@ class Labels():
     def zeros(self, n):
         zeros = torch.zeros(n, dtype=torch.float).cuda()
         if self.p_flip > 0:
-            n_flip = int(self.p_flip*n)
-            flip_idx = torch.randint(n, (n_flip,))
+            n_flip = int(self.p_flip * n)
+            flip_idx = torch.randint(n, (n_flip, ))
             zeros[flip_idx] = 1
         return zeros
- 
+
     def ones(self, n):
         ones = torch.ones(n, dtype=torch.float).cuda()
         if self.p_flip > 0:
-            n_flip = int(self.p_flip*n)
-            flip_idx = torch.randint(n, (n_flip,))
-            ones[flip_idx] = 0   
-        return ones 
+            n_flip = int(self.p_flip * n)
+            flip_idx = torch.randint(n, (n_flip, ))
+            ones[flip_idx] = 0
+        return ones
 
     @staticmethod
     def p_flip_ann(epoch, n_epochs):
-        p_flip = 1 - torch.FloatTensor(np.array(epoch/(n_epochs*0.5)))
+        p_flip = 1 - torch.FloatTensor(np.array(epoch / (n_epochs * 0.5)))
         p_flip = torch.clamp(p_flip, 0, 1)
         return p_flip
 
@@ -135,7 +150,8 @@ def KL_loss(mu, logvar):
 
 def z_sample(mu, logvar):
     std = logvar.exp().pow(0.5)
-    epsilon = torch.randn_like(std)  # returns tensor same size as std but mean 0 var 1
+    epsilon = torch.randn_like(
+        std)  # returns tensor same size as std but mean 0 var 1
     z_tilde = torch.add(mu, torch.mul(epsilon, std))
     assert z_tilde.size() == mu.size()
     return z_tilde
@@ -144,7 +160,7 @@ def z_sample(mu, logvar):
 class Set_Model():
     def __init__(self):
         pass
-    
+
     @staticmethod
     def train(*models):
         for model in models:

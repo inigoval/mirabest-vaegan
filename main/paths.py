@@ -1,9 +1,10 @@
 from pathlib import Path
 
+
 class Path_Handler():
     def __init__(self):
         self.dict = {}
-    
+
     def fill_dict(self):
         root = Path(__file__).resolve().parent.parent
         path_dict = {}
@@ -16,9 +17,10 @@ class Path_Handler():
         path_dict['checkpoints'] = root / 'files' / 'checkpoints'
         path_dict['images'] = root / 'files' / 'images'
 
-        path_dict['fake'] = root / 'files' / 'images' / 'fake'    
+        path_dict['fake'] = root / 'files' / 'images' / 'fake'
         path_dict['recon'] = root / 'files' / 'images' / 'recon'
-        
+        path_dict['gaug'] = root / 'files' / 'images' / 'gaug'
+
         self.dict = path_dict
 
     def create_paths(self):
@@ -30,4 +32,3 @@ class Path_Handler():
         self.fill_dict()
         self.create_paths()
         return self.dict
-
