@@ -32,37 +32,36 @@ class enc(nn.Module):
     def __init__(self):
         super(enc, self).__init__()
         self.conv1 = nn.Sequential(
-            nn.Conv2d(1, n_ef, 4, 2, 2, bias=False),
+            nn.Conv2d(1, n_ef, 4, 2, 1, bias=False),
             nn.BatchNorm2d(n_ef),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv2 = nn.Sequential(
-            nn.Conv2d(n_ef, n_ef*2, 4, 2, 3, bias=False),
+            nn.Conv2d(n_ef, n_ef*2, 7, 2, 1, bias=False),
             nn.BatchNorm2d(n_ef*2),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv3 = nn.Sequential(
-            nn.Conv2d(n_ef*2, n_ef*4, 4, 2, 3, bias=False),
+            nn.Conv2d(n_ef*2, n_ef*4, 6, 2, 1, bias=False),
             nn.BatchNorm2d(n_ef*4),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv4 = nn.Sequential(
-            nn.Conv2d(n_ef*4, n_ef*8, 4, 2, 2, bias=False),
+            nn.Conv2d(n_ef*4, n_ef*8, 4, 2, 1, bias=False),
             nn.BatchNorm2d(n_ef*8),
             nn.LeakyReLU(0.2, inplace=True))
 
         self.conv5 = nn.Sequential(
-            nn.Conv2d(n_ef*8, n_ef*16, 4, 2, 3, bias=False),
+            nn.Conv2d(n_ef*8, n_ef*16, 4, 2, 1, bias=False),
             nn.BatchNorm2d(n_ef*16),
             nn.LeakyReLU(0.2, inplace=True))
 
-        self.conv6 = nn.Sequential(
-            nn.Conv2d(n_ef*16, n_ef*32, 4, 2, 2, bias=False),
-            nn.BatchNorm2d(n_ef*32),
-            nn.LeakyReLU(0.2, inplace=True))
+        self.mu = nn.Conv2d(n_ef*16, n_z, 4, 1, 0, bias=False)
+        self.logvar = nn.Conv2d(n_ef*16, n_z, 4, 1, 0, bias=False)
 
-        self.mu = nn.Linear(n_ef*32*5*5, n_z, bias=False)
-        self.logvar = nn.Linear(n_ef*32*5*5, n_z, bias=False)
+
+        #self.mu = nn.Linear(256*4*4, n_z, bias=False)
+        #self.logvar = nn.Linear(256*4*4, n_z, bias=False)
 
     def forward(self, x):
         # calculating the logvariance ensurees that the std is positive
@@ -72,7 +71,6 @@ class enc(nn.Module):
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.conv5(x)
-        x = self.conv6(x).view(-1, n_ef*32*5*5)
         mu = self.mu(x).view(-1, n_z, 1, 1)
         logvar = self.logvar(x).view(-1, n_z, 1, 1)
         return mu, logvar
