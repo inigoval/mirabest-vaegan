@@ -239,7 +239,7 @@ for epoch in range(n_epochs):
             plot_hist(E, data_agent.X_fid[:1000, ...], epoch, eval=False)
             plot_hist(E, data_agent.X_fid[:1000, ...], epoch, eval=True)
 
-            for alpha in np.linspace(0, 2, 5):
+            for alpha in np.linspace(0, 1, 5):
                 im_aug.GAug(E, G, alpha=alpha, idx=0)
                 im_aug.plot(epoch)
 
