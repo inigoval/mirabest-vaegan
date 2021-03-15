@@ -85,111 +85,92 @@ class dec(nn.Module):
     # conv4 (32, 20, 20)  ->  (16, 38, 38)
     # conv5 (32, 38, 38)  ->  (16, 76, 76)
     # conv6 (16, 76, 76)  ->  (1, 150, 150)
-    def __init__(self):
+    def __init__(self, type="conv"):
         super(dec, self).__init__()
-        self.conv1 = nn.Sequential(
-            nn.ConvTranspose2d(n_z, n_gf * 16, 5, 1, 0, bias=False),
-            nn.BatchNorm2d(n_gf * 16),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
+        if type == "conv":
+            self.up1 = nn.Sequential(
+                nn.ConvTranspose2d(n_z, n_gf * 16, 5, 1, 0, bias=False),
+                nn.BatchNorm2d(n_gf * 16),
+                nn.LeakyReLU(0.2, inplace=True),
+            )
 
-        self.conv2 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf * 16, n_gf * 8, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(n_gf * 8),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
+            self.up2 = nn.Sequential(
+                nn.ConvTranspose2d(n_gf * 16, n_gf * 8, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(n_gf * 8),
+                nn.LeakyReLU(0.2, inplace=True),
+            )
 
-        self.conv3 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf * 8, n_gf * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(n_gf * 4),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
+            self.up3 = nn.Sequential(
+                nn.ConvTranspose2d(n_gf * 8, n_gf * 4, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(n_gf * 4),
+                nn.LeakyReLU(0.2, inplace=True),
+            )
 
-        self.conv4 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf * 4, n_gf * 2, 4, 2, 2, bias=False),
-            nn.BatchNorm2d(n_gf * 2),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
+            self.up4 = nn.Sequential(
+                nn.ConvTranspose2d(n_gf * 4, n_gf * 2, 4, 2, 2, bias=False),
+                nn.BatchNorm2d(n_gf * 2),
+                nn.LeakyReLU(0.2, inplace=True),
+            )
 
-        self.conv5 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf * 2, n_gf, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(n_gf),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
+            self.up5 = nn.Sequential(
+                nn.ConvTranspose2d(n_gf * 2, n_gf, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(n_gf),
+                nn.LeakyReLU(0.2, inplace=True),
+            )
 
-        self.conv6 = nn.Sequential(
-            nn.ConvTranspose2d(n_gf, 1, 4, 2, 2, bias=False),
-            nn.Sigmoid(),
-        )
+            self.up6 = nn.Sequential(
+                nn.ConvTranspose2d(n_gf, 1, 4, 2, 2, bias=False),
+                nn.Sigmoid(),
+            )
 
-    def forward(self, z):
-        x = self.conv1(z)
-        x = self.conv2(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
-        x = self.conv5(x)
-        x = self.conv6(x).view(-1, 1, 150, 150)
-        return x
+        elif type == "nn":
+            self.up1 = nn.Sequential(
+                nn.Upsample(size=(5, 5), mode="nearest"),
+                nn.Conv2d(n_z, n_gf * 32, 5, 1, 2, bias=False),
+                nn.BatchNorm2d(n_gf * 32),
+                nn.LeakyReLU(0.2, inplace=True),
+            )
 
-    def backprop(self, y_pred, y ,loss, retain_graph=True):
-        """
-        Pass a tuple of tuples with each tuple of form (X, y, loss) 
-        """
-        L = loss(y_pred, y)
-        L.backward(retain_graph=retain_graph)
-        return L
+            self.up2 = nn.Sequential(
+                nn.Upsample(size=(8, 8), mode="nearest"),
+                nn.Conv2d(n_gf * 32, n_gf * 16, 5, 1, 2, bias=False),
+                nn.BatchNorm2d(n_gf * 16),
+                nn.LeakyReLU(0.2, inplace=True),
+            )
 
+            self.up3 = nn.Sequential(
+                nn.Upsample(size=(12, 12), mode="nearest"),
+                nn.Conv2d(n_gf * 16, n_gf * 8, 5, 1, 2, bias=False),
+                nn.BatchNorm2d(n_gf * 8),
+                nn.LeakyReLU(0.2, inplace=True),
+            )
 
-class dec(nn.Module):
-    # up1 (n_z, 1, 1)   ->  (512, 5, 5)
-    # up2 (512, 5, 5)   ->  (256, 8, 8)
-    # up3 (256, 8, 8)   ->  (128, 12, 12)
-    # up4 (128, 12, 12)   ->  (64, 22, 22)
-    # up5 (64, 22, 22)  ->  (32, 40 ,40)
-    # up6 (32, 40, 40)  ->  (16, 76, 76)
-    # up7 (16, 76, 76)  ->  (1, 150, 150)
-    def __init__(self):
-        super(dec, self).__init__()
-        self.up1 = nn.Sequential(
-            nn.Upsample(size=(5,5), mode='nearest'),
-            nn.Conv2d(n_z, n_gf*32, 5, 1, 2, bias=False),
-            nn.BatchNorm2d(n_gf*32),
-            nn.LeakyReLU(0.2, inplace=True))
+            self.up4 = nn.Sequential(
+                nn.Upsample(size=(22, 22), mode="nearest"),
+                nn.ConvTranspose2d(n_gf * 8, n_gf * 4, 5, 1, 2, bias=False),
+                nn.BatchNorm2d(n_gf * 4),
+                nn.LeakyReLU(0.2, inplace=True),
+            )
 
-        self.up2 = nn.Sequential(
-            nn.Upsample(size=(8,8), mode='nearest'),
-            nn.Conv2d(n_gf*32, n_gf*16, 5, 1, 2, bias=False),
-            nn.BatchNorm2d(n_gf*16),
-            nn.LeakyReLU(0.2, inplace=True))
+            self.up5 = nn.Sequential(
+                nn.Upsample(size=(40, 40), mode="nearest"),
+                nn.ConvTranspose2d(n_gf * 4, n_gf * 2, 5, 1, 2, bias=False),
+                nn.BatchNorm2d(n_gf * 2),
+                nn.LeakyReLU(0.2, inplace=True),
+            )
 
-        self.up3 = nn.Sequential(
-            nn.Upsample(size=(12,12), mode='nearest'),
-            nn.Conv2d(n_gf*16, n_gf*8, 5, 1, 2, bias=False),
-            nn.BatchNorm2d(n_gf*8),
-            nn.LeakyReLU(0.2, inplace=True))
+            self.up6 = nn.Sequential(
+                nn.Upsample(size=(76, 76), mode="nearest"),
+                nn.ConvTranspose2d(n_gf * 2, n_gf, 5, 1, 2, bias=False),
+                nn.BatchNorm2d(n_gf),
+                nn.LeakyReLU(0.2, inplace=True),
+            )
 
-        self.up4 = nn.Sequential(
-            nn.Upsample(size=(22,22), mode='nearest'),
-            nn.ConvTranspose2d(n_gf*8, n_gf*4, 5, 1, 2, bias=False),
-            nn.BatchNorm2d(n_gf*4),
-            nn.LeakyReLU(0.2, inplace=True))
-
-        self.up5 = nn.Sequential(
-            nn.Upsample(size=(40,40), mode='nearest'),
-            nn.ConvTranspose2d(n_gf*4, n_gf*2, 5, 1, 2, bias=False),
-            nn.BatchNorm2d(n_gf*2),
-            nn.LeakyReLU(0.2, inplace=True))
-
-        self.up6 = nn.Sequential(
-            nn.Upsample(size=(76,76), mode='nearest'),
-            nn.ConvTranspose2d(n_gf*2, n_gf, 5, 1, 2, bias=False),
-            nn.BatchNorm2d(n_gf),
-            nn.LeakyReLU(0.2, inplace=True))
-
-        self.up7 = nn.Sequential(
-            nn.Upsample(size=(150,150), mode='nearest'),
-            nn.Conv2d(n_gf, n_channels , 5, 1, 2, bias=False),
-            nn.Sigmoid())
+            self.up7 = nn.Sequential(
+                nn.Upsample(size=(150, 150), mode="nearest"),
+                nn.Conv2d(n_gf, n_channels, 5, 1, 2, bias=False),
+                nn.Sigmoid(),
+            )
 
     def forward(self, z):
         x = self.up1(z)
@@ -197,17 +178,8 @@ class dec(nn.Module):
         x = self.up3(x)
         x = self.up4(x)
         x = self.up5(x)
-        x = self.up6(x)
-        x = self.up7(x).view(-1, 1, 150, 150)
+        x = self.up6(x).view(-1, 1, 150, 150)
         return x
-
-    def backprop(self, y_pred, y ,loss, retain_graph=True):
-        """
-        Pass a tuple of tuples with each tuple of form (X, y, loss) 
-        """
-        L = loss(y_pred, y)
-        L.backward(retain_graph=retain_graph)
-        return L
 
 
 class disc(nn.Module):
@@ -266,15 +238,6 @@ class disc(nn.Module):
         x = self.conv5(x)
         y_pred = self.conv6(x).view(-1)
         return y_pred, D_l
-
-    def backprop(self, X, y, loss, retain_graph=False):
-        """
-        Pass a tuple of tuples with each tuple of form (X, y, loss) 
-        """
-        y_pred = self.forward(X)[0].view(-1)
-        L = loss(y_pred, y)
-        L.backward(retain_graph=retain_graph)
-        return L
 
 
 class I(nn.Module):
