@@ -13,6 +13,7 @@ from dataloading import Data_Agent
 from paths import Path_Handler
 from datasets import MiraBest_full, MB_nohybrids, MBFRConfident
 
+
 paths = Path_Handler()
 path_dict = paths._dict()
 
@@ -91,6 +92,7 @@ for epoch in range(n_epochs):
 
     # Update annealed noise amplitude #
     noise.update_epsilon(epoch)
+    eval.update_epoch(epoch)
     eval.epsilon[epoch] = noise.epsilon
 
     # D.train()
@@ -278,7 +280,7 @@ for epoch in range(n_epochs):
                 E, G, filename=f"grid_X_fake_{epoch+1}.pdf", recon=False
             )
 
-            for alpha in np.linspace(0, 2, 5):
+            for alpha in np.linspace(0, 1, 5):
                 im_aug.GAug(E, G, alpha=alpha, idx=0)
                 im_aug.plot(epoch)
 

@@ -140,8 +140,6 @@ def renormalize(X, mu=0.0031, std=0.0352):
     X = (X - mu) / std
     return X
 
-        if np.iscomplexobj(S):
-            S = S.real
 
 def class_idx(y):
     fri_idx = np.argwhere(y == 0)
