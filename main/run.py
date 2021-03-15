@@ -27,6 +27,7 @@ batch_size = config["data"]["batch_size"]
 fraction = config["data"]["fraction"]
 
 n_z = config["model"]["n_z"]
+model_type = config["model"]["type"]
 
 n_epochs = config["training"]["n_epochs"]
 n_cycles = config["training"]["n_cycles"]
@@ -38,7 +39,7 @@ lr = config["training"]["lr"]
 skip = config["training"]["skip"]
 
 # Initialise networks, losses and optimizers #
-E, G, D = enc().cuda(), dec().cuda(), disc().cuda()
+E, G, D = enc().cuda(), dec(model_type=model_type).cuda(), disc().cuda()
 E_opt = torch.optim.Adam(E.parameters(), lr=lr)
 G_opt = torch.optim.Adam(G.parameters(), lr=lr)
 D_opt = torch.optim.Adam(D.parameters(), lr=lr)

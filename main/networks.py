@@ -85,9 +85,9 @@ class dec(nn.Module):
     # conv4 (32, 20, 20)  ->  (16, 38, 38)
     # conv5 (32, 38, 38)  ->  (16, 76, 76)
     # conv6 (16, 76, 76)  ->  (1, 150, 150)
-    def __init__(self, type="conv"):
+    def __init__(self, model_type="conv"):
         super(dec, self).__init__()
-        if type == "conv":
+        if model_type == "conv":
             self.up1 = nn.Sequential(
                 nn.ConvTranspose2d(n_z, n_gf * 16, 5, 1, 0, bias=False),
                 nn.BatchNorm2d(n_gf * 16),
@@ -123,52 +123,45 @@ class dec(nn.Module):
                 nn.Sigmoid(),
             )
 
-        elif type == "nn":
+        elif model_type == "nn":
             self.up1 = nn.Sequential(
                 nn.Upsample(size=(5, 5), mode="nearest"),
-                nn.Conv2d(n_z, n_gf * 32, 5, 1, 2, bias=False),
-                nn.BatchNorm2d(n_gf * 32),
-                nn.LeakyReLU(0.2, inplace=True),
-            )
-
-            self.up2 = nn.Sequential(
-                nn.Upsample(size=(8, 8), mode="nearest"),
-                nn.Conv2d(n_gf * 32, n_gf * 16, 5, 1, 2, bias=False),
+                nn.Conv2d(n_z, n_gf * 16, 3, 1, 1, bias=False),
                 nn.BatchNorm2d(n_gf * 16),
                 nn.LeakyReLU(0.2, inplace=True),
             )
 
-            self.up3 = nn.Sequential(
-                nn.Upsample(size=(12, 12), mode="nearest"),
-                nn.Conv2d(n_gf * 16, n_gf * 8, 5, 1, 2, bias=False),
+            self.up2 = nn.Sequential(
+                nn.Upsample(size=(10, 10), mode="nearest"),
+                nn.Conv2d(n_gf * 16, n_gf * 8, 3, 1, 1, bias=False),
                 nn.BatchNorm2d(n_gf * 8),
                 nn.LeakyReLU(0.2, inplace=True),
             )
 
-            self.up4 = nn.Sequential(
-                nn.Upsample(size=(22, 22), mode="nearest"),
-                nn.ConvTranspose2d(n_gf * 8, n_gf * 4, 5, 1, 2, bias=False),
+            self.up3 = nn.Sequential(
+                nn.Upsample(size=(20, 20), mode="nearest"),
+                nn.Conv2d(n_gf * 8, n_gf * 4, 3, 1, 1, bias=False),
                 nn.BatchNorm2d(n_gf * 4),
                 nn.LeakyReLU(0.2, inplace=True),
             )
 
-            self.up5 = nn.Sequential(
-                nn.Upsample(size=(40, 40), mode="nearest"),
-                nn.ConvTranspose2d(n_gf * 4, n_gf * 2, 5, 1, 2, bias=False),
+            self.up4 = nn.Sequential(
+                nn.Upsample(size=(38, 38), mode="nearest"),
+                nn.Conv2d(n_gf * 4, n_gf * 2, 3, 1, 1, bias=False),
                 nn.BatchNorm2d(n_gf * 2),
                 nn.LeakyReLU(0.2, inplace=True),
             )
 
-            self.up6 = nn.Sequential(
+            self.up5 = nn.Sequential(
                 nn.Upsample(size=(76, 76), mode="nearest"),
-                nn.ConvTranspose2d(n_gf * 2, n_gf, 5, 1, 2, bias=False),
+                nn.Conv2d(n_gf * 2, n_gf, 3, 1, 1, bias=False),
                 nn.BatchNorm2d(n_gf),
                 nn.LeakyReLU(0.2, inplace=True),
             )
 
-            self.up7 = nn.Sequential(
+            self.up6 = nn.Sequential(
                 nn.Upsample(size=(150, 150), mode="nearest"),
-                nn.Conv2d(n_gf, n_channels, 5, 1, 2, bias=False),
+                nn.Conv2d(n_gf, n_channels, 3, 1, 1, bias=False),
                 nn.Sigmoid(),
             )
 

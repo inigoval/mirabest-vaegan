@@ -9,10 +9,11 @@ model:
     n_ef: 16                       # encoder feature map size
     n_gf: 16                       # tenerator feature map size
     n_df: 16                       # discriminator feature map size
+    type: 'conv'
 
 training:
     n_epochs: 400
-    n_cycles: 10
+    n_cycles: 8 
     gamma: 0.5                     # style parameter weights the VAE (llike) loss
     noise_scale: 0.35              # annealed noise amplitude
     p_flip: 0.05                   # probability of label flip
