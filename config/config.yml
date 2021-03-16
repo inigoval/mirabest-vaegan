@@ -9,7 +9,7 @@ model:
     n_ef: 16                       # encoder feature map size
     n_gf: 16                       # tenerator feature map size
     n_df: 16                       # discriminator feature map size
-    model_type: 'conv'
+    architecture: 'conv'
 
 training:
     n_epochs: 400
@@ -20,3 +20,4 @@ training:
     label: 0                       # label to generate, 0:fri 1:frii
     lr: 0.0002                     # learning rate
     skip: False                    # skips training (use to test code logic)
+    T: 0.1                         # temperature for "cold" posterior 

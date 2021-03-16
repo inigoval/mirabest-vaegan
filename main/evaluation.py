@@ -26,6 +26,7 @@ class FID:
 
     def __init__(self, I, data):
         self.I = I
+        self.data = data
         self.mu_real, self.sigma_real = self.compute_mu_sig(I, data)
 
     def __call__(self, X_fake):
@@ -41,6 +42,11 @@ class FID:
         fid = Dmu + np.trace((sigma + self.sigma_real - 2 * S), axis1=0, axis2=1)
         self.fid = fid
         return fid
+
+    def reconstruct(data, E, G, n_samples=1000):
+        Z, _ = E(data[:n_samples, ...].cuda())
+        X = G(Z)
+        return X
 
     @staticmethod
     def compute_mu_sig(I, data):
@@ -61,7 +67,7 @@ class Eval:
     def __init__(self, n_epochs):
         self.epochs = np.arange(n_epochs)
         self.samples = np.zeros(n_epochs)
-        self.fid = np.zeros(n_epochs)
+        self.fid = {"fake": np.zeros(n_epochs), "recon": np.zeros(n_epochs)}
         self.D_X_test = np.zeros(n_epochs)
         self.ratio = np.zeros(n_epochs)
         self.epsilon = np.zeros(n_epochs)
@@ -94,9 +100,9 @@ class Eval:
         R = n_fri / n
         self.ratio[self.epoch] = R * 100
 
-    def plot_fid(self, eps=False, ylim=400):
+    def plot_fid(self, eps=False, ylim=400, fid_type="fake"):
         x = self.epochs
-        fid = self.fid
+        fid = self.fid[fid_type]
         epoch = self.epoch
         epsilon = self.epsilon
 
@@ -116,7 +122,7 @@ class Eval:
             ax2.plot(x[:epoch], epsilon[:epoch], "--", color="red")
             ax2.tick_params(axis="y", labelcolor=color)
 
-        fig.savefig(path_dict["eval"] / f"frechet_distance_{ylim}.pdf")
+        fig.savefig(path_dict["eval"] / f"fid_{fid_type}_{ylim}.pdf")
         plt.close(fig)
 
     def plot_overfitscore(self):
