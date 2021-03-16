@@ -9,7 +9,7 @@ model:
     n_ef: 16                       # encoder feature map size
     n_gf: 16                       # tenerator feature map size
     n_df: 16                       # discriminator feature map size
-    type: 'conv'
+    model_type: 'conv'
 
 training:
     n_epochs: 400
