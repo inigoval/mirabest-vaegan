@@ -13,7 +13,7 @@ model:
 
 training:
     n_epochs: 400
-    n_cycles: 8 
+    n_cycles: 5 
     gamma: 0.5                     # style parameter weights the VAE (llike) loss
     noise_scale: 0.35              # annealed noise amplitude
     p_flip: 0.05                   # probability of label flip
