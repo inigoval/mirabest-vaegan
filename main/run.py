@@ -84,7 +84,8 @@ im_stamp = Plot_Images(data_agent.X_fid, n_z, path_dict, grid_length=2)
 im_aug = Plot_GAug(data_agent.X_fid, path_dict)
 
 # Initialise evaluation classes #
-fid = FID(I, data_agent.X_fid)
+fid_fake = FID(I, data_agent.X_fid)
+fid_recon = FID(I, data_agent.X_fid[:1000, ...])
 eval = Eval(n_epochs)
 
 # Initialise label generator #
@@ -241,16 +242,6 @@ for epoch in range(n_epochs):
             plot_hist(E, data_agent.X_fid[:1000, ...], epoch, eval=False)
             plot_hist(E, data_agent.X_fid[:1000, ...], epoch, eval=True)
 
-            for alpha in np.linspace(0, 1, 5):
-                im_aug.GAug(E, G, alpha=alpha, idx=0)
-                im_aug.plot(epoch)
-
-                im_aug.GAug(E, G, alpha=alpha, idx=1)
-                im_aug.plot(epoch)
-
-                im_aug.GAug(E, G, alpha=alpha, idx=2)
-                im_aug.plot(epoch)
-
         im_stamp.plot_generate(E, G, filename=f"X_fake_{epoch+1}.pdf", recon=False)
         im_stamp.plot_generate(E, G, filename=f"X_recon_{epoch+1}.pdf", recon=True)
 
@@ -259,8 +250,8 @@ for epoch in range(n_epochs):
         X_recon = FID.reconstruct(data_agent.X_fid, E, G, n_samples=1000).cpu()
 
         ## Calculate and store metrics ##
-        score_fake = fid(X_fake)
-        score_recon = fid(X_recon)
+        score_fake = fid_fake(X_fake)
+        score_recon = fid_recon(X_recon)
         eval.samples[epoch] = samples
         eval.calc_overfitscore(D, testLoader, data_agent.n_test, noise)
         eval.calc_ratio(X_fake, I)
