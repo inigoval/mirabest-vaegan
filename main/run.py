@@ -50,9 +50,9 @@ BCE_loss = nn.BCELoss(reduction="mean")
 Set_Model.weights_init(E, G, D)
 
 # Load data #
-data_agent = Data_Agent(MB_nohybrids)
-data_agent.set_labels(label)
+data_agent = Data_Agent(MB_nohybrids, seed=seed)
 data_agent.subset(fraction)
+data_agent.set_labels(label)
 data_agent.fid_dset()
 
 trainLoader, testLoader = data_agent.load()
@@ -304,5 +304,5 @@ for epoch in range(n_epochs):
             )
 
         print(
-            f"epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID {score_recon:.3f}  |  best: {best_fid:.1f} (epoch {best_epoch})"
+            f"epoch {epoch+1}/{n_epochs}  |  samples:{samples}  |  FID (recon) {score_recon:.3f}  |  FID (fake) {score_fake:.3f}  |  best: {best_fid:.1f} (epoch {best_epoch})"
         )

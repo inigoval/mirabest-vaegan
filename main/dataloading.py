@@ -26,10 +26,10 @@ class Circle_Crop(torch.nn.Module):
         H, W, C = img.shape[-1], img.shape[-2], img.shape[-3]
         assert H == W
         x = torch.arange(W, dtype=torch.float).repeat(H, 1)
-        x = (x-74.5)/74.5
+        x = (x - 74.5) / 74.5
         y = torch.transpose(x, 0, 1)
         r = torch.sqrt(torch.pow(x, 2) + torch.pow(y, 2))
-        r = r/torch.max(r)
+        r = r / torch.max(r)
         r[r < 0.5] = -1
         r[r == 0.5] = -1
         r[r != -1] = 0
@@ -38,13 +38,22 @@ class Circle_Crop(torch.nn.Module):
         img = torch.mul(r, img)
         return img
 
-transform = torchvision.transforms.Compose([
-                         T.RandomRotation(180),
-                         T.ToTensor(),
-                         Circle_Crop()])
 
-class Data_Agent():
-    def __init__(self, dataset, path=path_dict['data'], transform=transform, batch_size=32, seed=69, download=False):
+transform = torchvision.transforms.Compose(
+    [T.RandomRotation(180), T.ToTensor(), Circle_Crop()]
+)
+
+
+class Data_Agent:
+    def __init__(
+        self,
+        dataset,
+        path=path_dict["data"],
+        transform=transform,
+        batch_size=32,
+        seed=69,
+        download=False,
+    ):
         self.batch_size = batch_size
         self.seed = seed
         self.transform = transform
@@ -53,16 +62,16 @@ class Data_Agent():
         self.train = dataset(path, train=True, transform=transform, download=download)
         self.test = dataset(path, train=False, transform=transform, download=download)
         self.n_test = len(self.test)
- 
+
     def subset(self, fraction):
-        self.fraction=fraction
+        self.fraction = fraction
         self.set_seed()
 
         length = len(self.train)
         idx = np.arange(length)
-        subset_idx = np.random.choice(idx, size=int(fraction*length))
-        subset = torch.utils.data.Subset(self.train, subset_idx)
-        self.train = subset
+        subset_idx = np.random.choice(idx, size=int(fraction * length))
+        self.train.data = self.train.data[subset_idx, ...]
+        self.train.targets = np.asarray(self.train.targets)[subset_idx]
 
     def set_labels(self, label):
         self.choose_label(self.train, label)
@@ -77,16 +86,22 @@ class Data_Agent():
 
     def load(self):
         self.set_seed()
-        train_loader = torch.utils.data.DataLoader(self.train, batch_size=self.batch_size, shuffle=True)
-        test_loader = torch.utils.data.DataLoader(self.test, batch_size=self.batch_size, shuffle=True)
+        train_loader = torch.utils.data.DataLoader(
+            self.train, batch_size=self.batch_size, shuffle=True
+        )
+        test_loader = torch.utils.data.DataLoader(
+            self.test, batch_size=self.batch_size, shuffle=True
+        )
         return train_loader, test_loader
 
     def fid_dset(self, size=10000):
         all_data = torch.utils.data.ConcatDataset((self.train, self.test))
-        loader = torch.utils.data.DataLoader(all_data, batch_size=len(all_data), shuffle=True)
+        loader = torch.utils.data.DataLoader(
+            all_data, batch_size=len(all_data), shuffle=True
+        )
 
-        # Complete enough cycles to have 'size' number of samples 
-        n_cycles = int(size/len(all_data))
+        # Complete enough cycles to have 'size' number of samples
+        n_cycles = int(size / len(all_data))
         X_fid, y_fid = torch.FloatTensor(), torch.LongTensor()
         for i in np.arange(n_cycles):
             for data in loader:
@@ -107,6 +122,6 @@ class Data_Agent():
         targets = np.asarray(target_list)
         label_idx = np.argwhere(targets == label)
         targets = targets[label_idx]
-        data_array = data_array[label_idx]
+        data_array = data_array[label_idx, ...]
         dataset.data = data_array
         dataset.targets = targets
