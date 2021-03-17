@@ -13,11 +13,12 @@ model:
 
 training:
     n_epochs: 400
-    n_cycles: 5 
+    n_cycles: 8 
     gamma: 0.5                     # style parameter weights the VAE (llike) loss
     noise_scale: 0.35              # annealed noise amplitude
     p_flip: 0.05                   # probability of label flip
     label: 0                       # label to generate, 0:fri 1:frii
     lr: 0.0002                     # learning rate
     skip: False                    # skips training (use to test code logic)
-    T: 0.1                         # temperature for "cold" posterior 
+    T: 1                        # temperature for "cold" posterior 
+    seed: 69                       # seed for reproducible dataset splitting

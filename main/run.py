@@ -38,6 +38,7 @@ label = config["training"]["label"]
 lr = config["training"]["lr"]
 skip = config["training"]["skip"]
 T = config["training"]["T"]
+seed = config["training"]["seed"]
 
 # Initialise networks, losses and optimizers #
 E, G, D = enc().cuda(), dec(model_type=model_type).cuda(), disc().cuda()
